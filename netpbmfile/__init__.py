@@ -1,0 +1,5 @@
+# -*- coding: utf-8 -*-
+# netpbmfile/__init__.py
+
+from .netpbmfile import __doc__, __all__, __version__  # noqa
+from .netpbmfile import *  # noqa
