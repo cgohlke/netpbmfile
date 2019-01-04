@@ -1,8 +1,8 @@
 # -*- coding: utf-8 -*-
 # netpbmfile.py
 
-# Copyright (c) 2011-2018, Christoph Gohlke
-# Copyright (c) 2011-2018, The Regents of the University of California
+# Copyright (c) 2011-2019, Christoph Gohlke
+# Copyright (c) 2011-2019, The Regents of the University of California
 # Produced at the Laboratory for Fluorescence Dynamics.
 # All rights reserved.
 #
@@ -50,7 +50,7 @@ No gamma correction is performed. Only one image per file is supported.
 :Organization:
   Laboratory for Fluorescence Dynamics, University of California, Irvine
 
-:Version: 2018.10.18
+:Version: 2019.1.1
 
 Requirements
 ------------
@@ -60,6 +60,8 @@ Requirements
 
 Revisions
 ---------
+2019.1.1
+    Update copyright year.
 2018.10.18
     Move netpbmfile.py into netpbmfile package.
 2018.02.18
@@ -83,7 +85,7 @@ Examples
 
 from __future__ import division, print_function
 
-__version__ = '2018.10.18'
+__version__ = '2019.1.1'
 __docformat__ = 'restructuredtext en'
 __all__ = 'imread', 'imsave', 'NetpbmFile'
 
