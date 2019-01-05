@@ -17,7 +17,7 @@ No gamma correction is performed. Only one image per file is supported.
 :Organization:
   Laboratory for Fluorescence Dynamics, University of California, Irvine
 
-:Version: 2018.10.18
+:Version: 2019.1.1
 
 Requirements
 ------------
@@ -27,6 +27,8 @@ Requirements
 
 Revisions
 ---------
+2019.1.1
+    Update copyright year.
 2018.10.18
     Move netpbmfile.py into netpbmfile package.
 2018.02.18
