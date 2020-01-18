@@ -1,13 +1,18 @@
 Read and write Netpbm files
 ===========================
 
-Netpbmfile is a Python library to read and write files in the Netpbm format
-as specified at http://netpbm.sourceforge.net/doc/.
+Netpbmfile is a Python library to read and write image files in the Netpbm
+format as specified at http://netpbm.sourceforge.net/doc/.
 
-The following Netpbm formats are supported: PBM (bi-level), PGM (grayscale),
-PPM (color), PAM (arbitrary), XV thumbnail (RGB332, read-only).
-Also reads Portable FloatMap formats: PF (float32 RGB) and
-Pf (float32 grayscale).
+The following Netpbm and Portable FloatMap formats are supported:
+
+* PBM (bi-level)
+* PGM (grayscale)
+* PPM (color)
+* PAM (arbitrary)
+* XV thumbnail (RGB332, read-only)
+* PF (float32 RGB, read-only)
+* Pf (float32 grayscale, read-only)
 
 No gamma correction is performed. Only one image per file is supported.
 
@@ -17,18 +22,22 @@ No gamma correction is performed. Only one image per file is supported.
 :Organization:
   Laboratory for Fluorescence Dynamics, University of California, Irvine
 
-:Version: 2019.1.1
+:License: BSD 3-Clause
+
+:Version: 2020.1.1
 
 Requirements
 ------------
-* `CPython 2.7 or 3.5+ <https://www.python.org>`_
-* `Numpy 1.13 <https://www.numpy.org>`_
-* `Matplotlib 2.2 <https://www.matplotlib.org>`_ (optional for plotting)
+* `CPython >= 3.6 <https://www.python.org>`_
+* `Numpy 1.14 <https://www.numpy.org>`_
+* `Matplotlib 3.1 <https://www.matplotlib.org>`_ (optional for plotting)
 
 Revisions
 ---------
-2019.1.1
-    Update copyright year.
+2020.1.1
+    Fix reading tightly packed P1 format and ASCII data with inline comments.
+    Remove support for Python 2.7 and 3.5.
+    Update copyright.
 2018.10.18
     Move netpbmfile.py into netpbmfile package.
 2018.02.18
@@ -43,7 +52,27 @@ Revisions
 
 Examples
 --------
->>> im1 = numpy.array([[0, 1], [65534, 65535]], dtype='uint16')
->>> imsave('_tmp.pgm', im1)
->>> im2 = imread('_tmp.pgm')
->>> assert numpy.all(im1 == im2)
+Save a numpy array to a Netpbm file in grayscale format:
+
+>>> data = numpy.array([[0, 1], [65534, 65535]], dtype='uint16')
+>>> imwrite('_tmp.pgm', data)
+
+Read the image data from a Netpbm file as numpy array:
+
+>>> image = imread('_tmp.pgm')
+>>> assert numpy.all(image == data)
+
+Access meta and image data in a Netpbm file:
+
+>>> with NetpbmFile('_tmp.pgm') as pgm:
+...     pgm.axes
+...     pgm.shape
+...     pgm.dtype
+...     pgm.maxval
+...     pgm.magicnum
+...     image = pgm.asarray()
+'YX'
+(2, 2)
+dtype('>u2')
+65535
+b'P5'
