@@ -54,16 +54,19 @@ No gamma correction is performed. Only one image per file is supported.
 
 :License: BSD 3-Clause
 
-:Version: 2020.1.1
+:Version: 2020.9.18
 
 Requirements
 ------------
-* `CPython >= 3.6 <https://www.python.org>`_
-* `Numpy 1.14 <https://www.numpy.org>`_
-* `Matplotlib 3.1 <https://www.matplotlib.org>`_ (optional for plotting)
+* `CPython >= 3.7 <https://www.python.org>`_
+* `Numpy 1.15 <https://www.numpy.org>`_
+* `Matplotlib 3.2 <https://www.matplotlib.org>`_ (optional for plotting)
 
 Revisions
 ---------
+2020.9.18
+    Remove support for Python 3.6 (NEP 29).
+    Support os.PathLike file names.
 2020.1.1
     Fix reading tightly packed P1 format and ASCII data with inline comments.
     Remove support for Python 2.7 and 3.5.
@@ -109,7 +112,7 @@ b'P5'
 
 """
 
-__version__ = '2020.1.1'
+__version__ = '2020.9.18'
 
 __all__ = ('imread', 'imwrite', 'imsave', 'NetpbmFile')
 
@@ -172,7 +175,7 @@ class NetpbmFile:
             self._fh = filename
         else:
             self._fh = open(filename, 'rb')
-            self.filename = filename
+            self.filename = os.fspath(filename)
 
         self._fh.seek(0)
         data = self._fh.read(4096)
@@ -188,7 +191,8 @@ class NetpbmFile:
                     self._read_pnm_header(data)
                 except Exception as exc:
                     raise ValueError(
-                        f'Not a Netpbm file:\n{data[:32]}') from exc
+                        f'Not a Netpbm file:\n{data[:32]}'
+                    ) from exc
 
         if self.magicnum in b'PFPf':
             dtype = self.byteorder + 'f4'
@@ -278,14 +282,17 @@ class NetpbmFile:
 
     def __str__(self):
         """Return information about Netpbm file."""
-        return '\n '.join((
-            self.__class__.__name__,
-            os.path.normpath(os.path.normcase(self.filename)),
-            f'type: {NetpbmFile.MAGIC_NUMBER[self.magicnum].decode("ascii")}',
-            f'axes: {self.axes}',
-            'shape: {}'.format(', '.join(str(i) for i in self.shape)),
-            f'dtype: {self.dtype}',
-        ))
+        magicnum = NetpbmFile.MAGIC_NUMBER[self.magicnum].decode('ascii')
+        return '\n '.join(
+            (
+                self.__class__.__name__,
+                os.path.normpath(os.path.normcase(self.filename)),
+                f'type: {magicnum}',
+                f'axes: {self.axes}',
+                'shape: {}'.format(', '.join(str(i) for i in self.shape)),
+                f'dtype: {self.dtype}',
+            )
+        )
 
     def _read_pam_header(self, data):
         """Read PAM header and initialize instance."""
@@ -293,7 +300,7 @@ class NetpbmFile:
             br'(^P7[\n\r]+(?:(?:[\n\r]+)|(?:#.*)|'
             br'(HEIGHT\s+\d+)|(WIDTH\s+\d+)|(DEPTH\s+\d+)|(MAXVAL\s+\d+)|'
             br'(?:TUPLTYPE\s+\w+))*ENDHDR\n)',
-            data
+            data,
         ).groups()
         self.header = regroups[0]
         self.magicnum = b'P7'
@@ -307,15 +314,17 @@ class NetpbmFile:
         """Read PNM header and initialize instance."""
         bpm = data[1:2] in b'14'
         regroups = re.search(
-            b''.join((
-                br'(^(P[123456]|P7 332)\s+(?:#.*[\r\n])*',
-                br'\s*(\d+)\s+(?:#.*[\r\n])*',
-                br'\s*(\d+)\s+(?:#.*[\r\n])*' * (not bpm),
-                br'\s*(\d+)\s(?:\s*#.*[\r\n]\s)*)'
-            )),
-            data
+            b''.join(
+                (
+                    br'(^(P[123456]|P7 332)\s+(?:#.*[\r\n])*',
+                    br'\s*(\d+)\s+(?:#.*[\r\n])*',
+                    br'\s*(\d+)\s+(?:#.*[\r\n])*' * (not bpm),
+                    br'\s*(\d+)\s(?:\s*#.*[\r\n]\s)*)',
+                )
+            ),
+            data,
         ).groups()
-        regroups = regroups + (1, ) * bpm
+        regroups = regroups + (1,) * bpm
         self.header = regroups[0]
         self.magicnum = regroups[1]
         self.width = int(regroups[2])
@@ -331,7 +340,7 @@ class NetpbmFile:
             br'\s*(\d+)\s+(?:#.*[\r\n])*'
             br'\s*(\d+)\s+(?:#.*[\r\n])*'
             br'\s*([-+]?[0-9]*\.?[0-9]+([eE][-+]?[0-9]+)?)\s+(?:#.*[\r\n])*)',
-            data
+            data,
         ).groups()
         self.header = regroups[0]
         self.magicnum = regroups[1]
@@ -370,7 +379,7 @@ class NetpbmFile:
         elif self.maxval == 1:
             shape[2] = int(math.ceil(self.width / 8))
             data = numpy.frombuffer(data, dtype).reshape(shape)
-            data = numpy.unpackbits(data, axis=-2)[:, :, :self.width, :]
+            data = numpy.unpackbits(data, axis=-2)[:, :, : self.width, :]
         else:
             size *= dtype.itemsize
             data = numpy.frombuffer(data[:size], dtype).reshape(shape)
@@ -396,15 +405,19 @@ class NetpbmFile:
     def _header(self, pam=False):
         """Return file header as byte string."""
         if pam or self.magicnum == b'P7':
-            header = '\n'.join((
-                'P7',
-                f'HEIGHT {self.height}',
-                f'WIDTH {self.width}',
-                f'DEPTH {self.depth}',
-                f'MAXVAL {self.maxval}',
-                '\n'.join(f"TUPLTYPE {i.decode('ascii')}"
-                          for i in self.tupltypes),
-                'ENDHDR\n'))
+            header = '\n'.join(
+                (
+                    'P7',
+                    f'HEIGHT {self.height}',
+                    f'WIDTH {self.width}',
+                    f'DEPTH {self.depth}',
+                    f'MAXVAL {self.maxval}',
+                    '\n'.join(
+                        f"TUPLTYPE {i.decode('ascii')}" for i in self.tupltypes
+                    ),
+                    'ENDHDR\n',
+                )
+            )
         elif self.maxval == 1:
             header = f'P4 {self.width} {self.height}\n'
         elif self.depth == 1:
@@ -429,6 +442,7 @@ def main(argv=None, test=False):
 
     if len(argv) > 1 and '--doctest' in argv:
         import doctest
+
         doctest.testmod()
         return
 
