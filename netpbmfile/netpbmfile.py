@@ -54,7 +54,7 @@ No gamma correction is performed. Only one image per file is supported.
 
 :License: BSD 3-Clause
 
-:Version: 2020.9.18
+:Version: 2020.10.18
 
 Requirements
 ------------
@@ -64,6 +64,8 @@ Requirements
 
 Revisions
 ---------
+2020.10.18
+    Disallow comments after last value in PNM headers.
 2020.9.18
     Remove support for Python 3.6 (NEP 29).
     Support os.PathLike file names.
@@ -112,7 +114,7 @@ b'P5'
 
 """
 
-__version__ = '2020.9.18'
+__version__ = '2020.10.18'
 
 __all__ = ('imread', 'imwrite', 'imsave', 'NetpbmFile')
 
@@ -319,7 +321,10 @@ class NetpbmFile:
                     br'(^(P[123456]|P7 332)\s+(?:#.*[\r\n])*',
                     br'\s*(\d+)\s+(?:#.*[\r\n])*',
                     br'\s*(\d+)\s+(?:#.*[\r\n])*' * (not bpm),
-                    br'\s*(\d+)\s(?:\s*#.*[\r\n]\s)*)',
+                    # in disagreement with the netpbm doc pages, the netpbm
+                    # man pages only allow a single whitespace character after
+                    # the last value
+                    br'\s*(\d+)\s)',
                 )
             ),
             data,
@@ -335,11 +340,13 @@ class NetpbmFile:
 
     def _read_pf_header(self, data):
         """Read PF header and initialize instance."""
+        # there are no comments in these files
         regroups = re.search(
             br'(^(P[Ff])\s+(?:#.*[\r\n])*'
             br'\s*(\d+)\s+(?:#.*[\r\n])*'
             br'\s*(\d+)\s+(?:#.*[\r\n])*'
-            br'\s*([-+]?[0-9]*\.?[0-9]+([eE][-+]?[0-9]+)?)\s+(?:#.*[\r\n])*)',
+            br'\s*([-+]?[0-9]*\.?[0-9]+([eE][-+]?[0-9]+)?)'
+            br'\s*[\n])',
             data,
         ).groups()
         self.header = regroups[0]
@@ -353,7 +360,7 @@ class NetpbmFile:
     def _read_data(self, fh, byteorder=None):
         """Return image data from open file as numpy array."""
         fh.seek(len(self.header))
-        data = fh.read()
+
         if byteorder is None:
             byteorder = self.byteorder
         if self.magicnum in b'PFPf':
@@ -365,24 +372,26 @@ class NetpbmFile:
         dtype = numpy.dtype(dtype)
         depth = 1 if self.magicnum == b'P7 332' else self.depth
         shape = [-1, self.height, self.width, depth]
-        size = numpy.prod(shape[1:], dtype='int64')
-        if self.magicnum in b'PFPf':
-            size *= dtype.itemsize
-            data = numpy.frombuffer(data[:size], dtype).reshape(shape)
-        elif self.magicnum in b'P1P2P3':
+
+        if self.magicnum in b'P1P2P3':
+            data = fh.read()
             if self.magicnum == b'P1' and data[1] != b' ':
                 data = [bytes([i]) for i in data if i == 48 or i == 49]
             else:
                 data = [i for i in data.split() if i.isdigit()]
+            size = numpy.prod(shape[1:], dtype='int64')
             data = numpy.array(data[:size], dtype)
             data = data.reshape(shape)
-        elif self.maxval == 1:
-            shape[2] = int(math.ceil(self.width / 8))
-            data = numpy.frombuffer(data, dtype).reshape(shape)
-            data = numpy.unpackbits(data, axis=-2)[:, :, : self.width, :]
         else:
-            size *= dtype.itemsize
-            data = numpy.frombuffer(data[:size], dtype).reshape(shape)
+            bilevel = self.maxval == 1 and self.magicnum not in b'PFPf'
+            if bilevel:
+                shape[2] = int(math.ceil(self.width / 8))
+            size = numpy.prod(shape[1:], dtype='int64') * dtype.itemsize
+            data = fh.read(size)
+            data = numpy.frombuffer(data, dtype).reshape(shape)
+            if bilevel:
+                data = numpy.unpackbits(data, axis=-2)[:, :, : self.width, :]
+
         if data.shape[0] < 2:
             data = data.reshape(data.shape[1:])
         if data.shape[-1] < 2:
