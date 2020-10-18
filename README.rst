@@ -24,7 +24,7 @@ No gamma correction is performed. Only one image per file is supported.
 
 :License: BSD 3-Clause
 
-:Version: 2020.9.18
+:Version: 2020.10.18
 
 Requirements
 ------------
@@ -34,6 +34,8 @@ Requirements
 
 Revisions
 ---------
+2020.10.18
+    Disallow comments after last value in PNM headers.
 2020.9.18
     Remove support for Python 3.6 (NEP 29).
     Support os.PathLike file names.
