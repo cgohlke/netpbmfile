@@ -13,8 +13,11 @@ The following Netpbm and Portable FloatMap formats are supported:
 * XV thumbnail (RGB332, read-only)
 * PF (float32 RGB, read-only)
 * Pf (float32 grayscale, read-only)
+* PGX (signed grayscale, read-only)
 
 No gamma correction is performed. Only one image per file is supported.
+
+The PGX format is specified in ITU-T Rec. T.803.
 
 :Author:
   `Christoph Gohlke <https://www.lfd.uci.edu/~gohlke/>`_
@@ -24,7 +27,7 @@ No gamma correction is performed. Only one image per file is supported.
 
 :License: BSD 3-Clause
 
-:Version: 2020.10.18
+:Version: 2021.6.6
 
 Requirements
 ------------
@@ -34,6 +37,9 @@ Requirements
 
 Revisions
 ---------
+2021.6.6
+    Fix unclosed file warnings.
+    Support reading PGX JPEG2000 reference images.
 2020.10.18
     Disallow comments after last value in PNM headers.
 2020.9.18
@@ -46,7 +52,7 @@ Revisions
 2018.10.18
     Move netpbmfile.py into netpbmfile package.
 2018.02.18
-    Support Portable FloatMaps.
+    Support reading Portable FloatMaps.
     Style fixes.
 2016.02.24
     Use 'fromdata' classmethod to initialize from data.
