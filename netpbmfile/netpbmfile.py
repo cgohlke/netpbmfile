@@ -1,6 +1,6 @@
 # netpbmfile.py
 
-# Copyright (c) 2011-2020, Christoph Gohlke
+# Copyright (c) 2011-2021, Christoph Gohlke
 # All rights reserved.
 #
 # Redistribution and use in source and binary forms, with or without
@@ -43,8 +43,11 @@ The following Netpbm and Portable FloatMap formats are supported:
 * XV thumbnail (RGB332, read-only)
 * PF (float32 RGB, read-only)
 * Pf (float32 grayscale, read-only)
+* PGX (signed grayscale, read-only)
 
 No gamma correction is performed. Only one image per file is supported.
+
+The PGX format is specified in ITU-T Rec. T.803.
 
 :Author:
   `Christoph Gohlke <https://www.lfd.uci.edu/~gohlke/>`_
@@ -54,7 +57,7 @@ No gamma correction is performed. Only one image per file is supported.
 
 :License: BSD 3-Clause
 
-:Version: 2020.10.18
+:Version: 2021.6.6
 
 Requirements
 ------------
@@ -64,6 +67,9 @@ Requirements
 
 Revisions
 ---------
+2021.6.6
+    Fix unclosed file warnings.
+    Support reading PGX JPEG2000 reference images.
 2020.10.18
     Disallow comments after last value in PNM headers.
 2020.9.18
@@ -76,7 +82,7 @@ Revisions
 2018.10.18
     Move netpbmfile.py into netpbmfile package.
 2018.02.18
-    Support Portable FloatMaps.
+    Support reading Portable FloatMaps.
     Style fixes.
 2016.02.24
     Use 'fromdata' classmethod to initialize from data.
@@ -114,7 +120,7 @@ b'P5'
 
 """
 
-__version__ = '2020.10.18'
+__version__ = '2021.6.6'
 
 __all__ = ('imread', 'imwrite', 'imsave', 'NetpbmFile')
 
@@ -144,7 +150,7 @@ imsave = imwrite
 
 
 class NetpbmFile:
-    """Read and write Netpbm PAM, PBM, PGM, PPM, and PF files."""
+    """Read and write Netpbm PAM, PBM, PGM, PPM, PGX, and PF files."""
 
     MAGIC_NUMBER = {
         b'P1': b'BLACKANDWHITE',
@@ -157,6 +163,7 @@ class NetpbmFile:
         b'P7': b'RGB_ALPHA',
         b'PF': b'RGB_FLOAT',
         b'Pf': b'GRAYSCALE_FLOAT',
+        b'PG': b'PGX',
     }
 
     def __init__(self, filename):
@@ -179,25 +186,33 @@ class NetpbmFile:
             self._fh = open(filename, 'rb')
             self.filename = os.fspath(filename)
 
-        self._fh.seek(0)
-        data = self._fh.read(4096)
-        if len(data) < 7 or data[:2] not in NetpbmFile.MAGIC_NUMBER:
-            raise ValueError(f'Not a Netpbm file:\n{data[:32]}')
-        if data[:2] in b'PFPf':
-            self._read_pf_header(data)
-        else:
-            try:
-                self._read_pam_header(data)
-            except Exception:
+        try:
+            self._fh.seek(0)
+            data = self._fh.read(4096)
+            if len(data) < 7 or data[:2] not in NetpbmFile.MAGIC_NUMBER:
+                raise ValueError(f'Not a Netpbm file:\n{data[:16]}')
+            if data[:2] in b'PFPf':
+                self._read_pf_header(data)
+            elif data[:2] == b'PG':
+                self._read_pg_header(data)
+            else:
                 try:
-                    self._read_pnm_header(data)
-                except Exception as exc:
-                    raise ValueError(
-                        f'Not a Netpbm file:\n{data[:32]}'
-                    ) from exc
+                    self._read_pam_header(data)
+                except Exception:
+                    try:
+                        self._read_pnm_header(data)
+                    except Exception as exc:
+                        raise ValueError(
+                            f'Not a Netpbm file:\n{data[:16]}'
+                        ) from exc
+        except Exception:
+            self._fh.close()
+            raise
 
         if self.magicnum in b'PFPf':
             dtype = self.byteorder + 'f4'
+        elif self.magicnum == b'PG':
+            dtype = self.byteorder + self.dtype
         elif self.maxval < 256:
             dtype = 'u1'
         else:
@@ -293,6 +308,7 @@ class NetpbmFile:
                 f'axes: {self.axes}',
                 'shape: {}'.format(', '.join(str(i) for i in self.shape)),
                 f'dtype: {self.dtype}',
+                f'maxval: {self.maxval}',
             )
         )
 
@@ -357,19 +373,43 @@ class NetpbmFile:
         self.byteorder = '<' if float(regroups[4]) < 0 else '>'
         self.depth = 3 if self.magicnum == b'PF' else 1
 
+    def _read_pg_header(self, data):
+        """Read PG header and initialize instance."""
+        regroups = re.search(
+            br'(^(PG)[ ]+'
+            br'(LM|ML)?[ ]*'
+            br'([-+])?[ ]*([0-9]+)[ ]+'
+            br'([0-9]+)[ ]+'
+            br'([0-9]+)[ ]*[\r?\n])',
+            data,
+        ).groups()
+        self.header = regroups[0]
+        self.magicnum = regroups[1]
+        self.byteorder = '>' if (regroups[2] == b'ML') else '<'
+        signed = regroups[3] == b'-'
+        bitdepth = int(regroups[4])
+        self.width = int(regroups[5])
+        self.height = int(regroups[6])
+        self.depth = 1
+        self.maxval = 2 ** bitdepth - 1
+        if bitdepth <= 8:
+            self.dtype = 'i1' if signed else 'u1'
+        elif bitdepth <= 16:
+            self.dtype = 'i2' if signed else 'u2'
+        elif bitdepth <= 32:
+            self.dtype = 'i4' if signed else 'u4'
+        else:
+            raise ValueError(f'bitdepth {bitdepth} out of range')
+
     def _read_data(self, fh, byteorder=None):
         """Return image data from open file as numpy array."""
         fh.seek(len(self.header))
 
         if byteorder is None:
-            byteorder = self.byteorder
-        if self.magicnum in b'PFPf':
-            dtype = byteorder + 'f4'
-        elif self.maxval < 256:
-            dtype = 'u1'
+            dtype = self.dtype
         else:
-            dtype = byteorder + 'u2'
-        dtype = numpy.dtype(dtype)
+            dtype = self.dtype.newbyteorder(byteorder)
+
         depth = 1 if self.magicnum == b'P7 332' else self.depth
         shape = [-1, self.height, self.width, depth]
 
@@ -427,6 +467,16 @@ class NetpbmFile:
                     'ENDHDR\n',
                 )
             )
+        elif self.magicnum == b'PG':
+            header = ''.join(
+                (
+                    'PG ',
+                    'ML ' if self.byteorder == '>' else '',
+                    '-' if self.dtype.kind == 'i' else '',
+                    f'{int(math.ceil(math.log2(self.maxval + 1)))} ',
+                    f'{self.width} ' f'{self.height}\n',
+                )
+            )
         elif self.maxval == 1:
             header = f'P4 {self.width} {self.height}\n'
         elif self.depth == 1:
@@ -442,7 +492,6 @@ def main(argv=None, test=False):
     Show images specified on command line or all images in  directory.
 
     """
-    import os
     from glob import glob
     from matplotlib import pyplot
 
@@ -456,11 +505,11 @@ def main(argv=None, test=False):
         return
 
     if len(argv) == 1:
-        files = glob('*.p*m')
+        files = glob('*.p*')
     elif '*' in argv[1]:
         files = glob(argv[1])
     elif os.path.isdir(argv[1]):
-        files = glob(f'{argv[1]}/*.p*m')
+        files = glob(f'{argv[1]}/*.p*')
     else:
         files = argv[1:]
 
@@ -469,7 +518,8 @@ def main(argv=None, test=False):
             with NetpbmFile(fname) as pam:
                 print(pam)
                 img = pam.asarray(copy=False)
-                if test:  # enable for testing
+                if test and pam.magicnum not in b'PGPfPF':
+                    # roundtrip testing
                     pam.write('_tmp.pgm.out', pam=True)
                     img2 = imread('_tmp.pgm.out')
                     assert numpy.all(img == img2)
