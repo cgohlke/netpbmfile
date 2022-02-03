@@ -11,8 +11,9 @@ The following Netpbm and Portable FloatMap formats are supported:
 * PPM (color)
 * PAM (arbitrary)
 * XV thumbnail (RGB332, read-only)
-* PF (float32 RGB, read-only)
 * Pf (float32 grayscale, read-only)
+* PF (float32 RGB, read-only)
+* PF4 (float32 RGBA, read-only)
 * PGX (signed grayscale, read-only)
 
 No gamma correction is performed. Only one image per file is supported.
@@ -27,16 +28,23 @@ The PGX format is specified in ITU-T Rec. T.803.
 
 :License: BSD 3-Clause
 
-:Version: 2021.6.6
+:Version: 2022.2.2
 
 Requirements
 ------------
-* `CPython >= 3.7 <https://www.python.org>`_
-* `Numpy 1.15 <https://www.numpy.org>`_
-* `Matplotlib 3.2 <https://www.matplotlib.org>`_ (optional for plotting)
+This release has been tested with the following requirements and dependencies
+(other versions may work):
+
+* `CPython 3.8.10, 3.9.10, 3.10.2 64-bit <https://www.python.org>`_
+* `Numpy 1.21.5 <https://pypi.org/project/numpy/>`_
+* `Matplotlib 3.4.3 <https://pypi.org/project/matplotlib/>`_  (optional)
 
 Revisions
 ---------
+2022.2.2
+    Add type hints.
+    Support reading PF4 RGBA FloatMaps.
+    Drop support for Python 3.7 and numpy < 1.19 (NEP29).
 2021.6.6
     Fix unclosed file warnings.
     Support reading PGX JPEG2000 reference images.
@@ -87,3 +95,6 @@ Access meta and image data in a Netpbm file:
 dtype('>u2')
 65535
 b'P5'
+
+To view the image stored in a Netpbm file from a command line, run
+``python -m netpbmfile _tmp.pgm``.
