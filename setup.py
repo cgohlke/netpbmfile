@@ -7,6 +7,8 @@ import re
 
 from setuptools import setup
 
+buildnumber = ''
+
 
 def search(pattern, code, flags=0):
     # return first match for pattern in code
@@ -17,9 +19,10 @@ def search(pattern, code, flags=0):
 
 
 with open('netpbmfile/netpbmfile.py') as fh:
-    code = fh.read()
+    code = fh.read().replace('\r\n', '\n').replace('\r', '\n')
 
 version = search(r"__version__ = '(.*?)'", code)
+version += ('.' + buildnumber) if buildnumber else ''
 
 description = search(r'"""(.*)\.(?:\r\n|\r|\n)', code)
 
@@ -28,29 +31,32 @@ readme = search(
     code,
     re.MULTILINE | re.DOTALL,
 )
-
 readme = '\n'.join(
     [description, '=' * len(description)] + readme.splitlines()[1:]
 )
 
-license = search(
-    r'(# Copyright.*?(?:\r\n|\r|\n))(?:\r\n|\r|\n)+""',
-    code,
-    re.MULTILINE | re.DOTALL,
-)
-
-license = license.replace('# ', '').replace('#', '')
-
 if 'sdist' in sys.argv:
+    # update README and LICENSE files
+
+    with open('README.rst', 'w') as fh:
+        fh.write(readme)
+
+    license = search(
+        r'(# Copyright.*?(?:\r\n|\r|\n))(?:\r\n|\r|\n)+""',
+        code,
+        re.MULTILINE | re.DOTALL,
+    )
+    license = license.replace('# ', '').replace('#', '')
+
     with open('LICENSE', 'w') as fh:
         fh.write('BSD 3-Clause License\n\n')
         fh.write(license)
-    with open('README.rst', 'w') as fh:
-        fh.write(readme)
+
 
 setup(
     name='netpbmfile',
     version=version,
+    license='BSD',
     description=description,
     long_description=readme,
     author='Christoph Gohlke',
@@ -61,7 +67,6 @@ setup(
         'Source Code': 'https://github.com/cgohlke/netpbmfile',
         # 'Documentation': 'https://',
     },
-    license='BSD',
     packages=['netpbmfile'],
     entry_points={
         'console_scripts': ['netpbmfile = netpbmfile.netpbmfile:main']
