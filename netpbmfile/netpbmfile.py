@@ -52,7 +52,7 @@ The PGX format is specified in ITU-T Rec. T.803.
 
 :Author: `Christoph Gohlke <https://www.cgohlke.com>`_
 :License: BSD 3-Clause
-:Version: 2022.9.1
+:Version: 2022.9.12
 
 Requirements
 ------------
@@ -60,15 +60,16 @@ Requirements
 This release has been tested with the following requirements and dependencies
 (other versions may work):
 
-- `CPython 3.8.10, 3.9.13, 3.10.6, 3.11.0rc1 <https://www.python.org>`_
+- `CPython 3.8.10, 3.9.13, 3.10.7, 3.11.0rc2 <https://www.python.org>`_
 - `NumPy 1.22.4 <https://pypi.org/project/numpy/>`_
 - `Matplotlib 3.5.3 <https://pypi.org/project/matplotlib/>`_  (optional)
 
 Revisions
 ---------
 
-2022.9.1
+2022.9.12
 
+- Allow space after token value in PAM.
 - Update metadata.
 
 2022.2.2
@@ -144,13 +145,13 @@ b'P5'
 
 View the image stored in a Netpbm file from a command line::
 
-    ``python -m netpbmfile _tmp.pgm``.
+    python -m netpbmfile _tmp.pgm
 
 """
 
 from __future__ import annotations
 
-__version__ = '2022.9.1'
+__version__ = '2022.9.12'
 
 __all__ = ['imread', 'imwrite', 'imsave', 'NetpbmFile']
 
@@ -378,8 +379,8 @@ class NetpbmFile:
         """Read PAM header and initialize instance."""
         match = re.search(
             br'(^P7[\n\r]+(?:(?:[\n\r]+)|(?:#.*)|'
-            br'(HEIGHT\s+\d+)|(WIDTH\s+\d+)|(DEPTH\s+\d+)|(MAXVAL\s+\d+)|'
-            br'(?:TUPLTYPE\s+\w+))*ENDHDR[\n\r])',
+            br'(HEIGHT\s+\d+ *)|(WIDTH\s+\d+ *)|(DEPTH\s+\d+ *)|'
+            br'(MAXVAL\s+\d+ *)|(?:TUPLTYPE\s+\w+))*ENDHDR[\n\r])',
             data,
         )
         if match is None:
