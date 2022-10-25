@@ -2,27 +2,43 @@ Read and write Netpbm files
 ===========================
 
 Netpbmfile is a Python library to read and write image files in the Netpbm
-format as specified at http://netpbm.sourceforge.net/doc/.
+format as specified at http://netpbm.sourceforge.net/doc/
 
-The following Netpbm and Portable FloatMap formats are supported:
+The following Netpbm and related formats are supported:
 
-- PBM (bi-level)
-- PGM (grayscale)
-- PPM (color)
-- PAM (arbitrary)
-- XV thumbnail (RGB332, read-only)
-- Pf (float32 grayscale, read-only)
-- PF (float32 RGB, read-only)
-- PF4 (float32 RGBA, read-only)
-- PGX (signed grayscale, read-only)
+- PBM (Portable Bit Map): P1 (text) and P4 (binary)
+- PGM (Portable Gray Map): P2 (text) and P5 (binary)
+- PPM (Portable Pixel Map): P3 (text) and P6 (binary)
+- PNM (Portable Any Map): shorthand for PBM, PGM, and PPM collectively
+- PAM (Portable Arbitrary Map): P7, bilevel, gray, and rgb
+- PFM (Portable Float Map): Pf (gray), PF (rgb), and PF4 (rgba), read-only
+- PGX (Portable Graymap Signed): PG, signed grayscale, read-only
+- XV thumbnail: P7 332 (rgb332), read-only
 
-No gamma correction is performed. Only one image per file is supported.
+No gamma correction is performed.
 
 The PGX format is specified in ITU-T Rec. T.803.
 
 :Author: `Christoph Gohlke <https://www.cgohlke.com>`_
 :License: BSD 3-Clause
-:Version: 2022.9.12
+:Version: 2022.10.25
+
+Quickstart
+----------
+
+Install the netpbmfile package and all dependencies from the
+Python Package Index::
+
+    python -m pip install -U netpbmfile[all]
+
+View image and metadata stored in a Netpbm file::
+
+    python -m oiffile file.ppm
+
+See `Examples`_ for using the programming interface.
+
+Source code and support are available on
+`GitHub <https://github.com/cgohlke/netpbmfile>`_.
 
 Requirements
 ------------
@@ -30,12 +46,20 @@ Requirements
 This release has been tested with the following requirements and dependencies
 (other versions may work):
 
-- `CPython 3.8.10, 3.9.13, 3.10.7, 3.11.0rc2 <https://www.python.org>`_
-- `NumPy 1.22.4 <https://pypi.org/project/numpy/>`_
-- `Matplotlib 3.5.3 <https://pypi.org/project/matplotlib/>`_  (optional)
+- `CPython 3.8.10, 3.9.13, 3.10.8, 3.11.0 <https://www.python.org>`_
+- `NumPy 1.23.4 <https://pypi.org/project/numpy/>`_
+- `Matplotlib 3.6.1 <https://pypi.org/project/matplotlib/>`_  (optional)
 
 Revisions
 ---------
+
+2022.10.25
+
+- Read multi-image files.
+- Fix reading ASCII formats with trailing comments.
+- Fix writing maxval=1, depth=1 binary images.
+- Use tifffile.imshow for multi-image arrays if installed.
+- Change tupltypes to bytes according to specification (breaking).
 
 2022.9.12
 
@@ -90,13 +114,13 @@ Examples
 
 Save a numpy array to a Netpbm file in grayscale format:
 
->>> data = numpy.array([[0, 1], [65534, 65535]], dtype='uint16')
+>>> data = numpy.array([[0, 1], [65534, 65535]], dtype=numpy.uint16)
 >>> imwrite('_tmp.pgm', data)
 
 Read the image data from a Netpbm file as numpy array:
 
 >>> image = imread('_tmp.pgm')
->>> assert numpy.all(image == data)
+>>> numpy.testing.assert_equal(image, data)
 
 Access meta and image data in a Netpbm file:
 
@@ -112,7 +136,3 @@ Access meta and image data in a Netpbm file:
 dtype('>u2')
 65535
 b'P5'
-
-View the image stored in a Netpbm file from a command line::
-
-    python -m netpbmfile _tmp.pgm
