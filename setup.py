@@ -27,7 +27,7 @@ version += ('.' + buildnumber) if buildnumber else ''
 description = search(r'"""(.*)\.(?:\r\n|\r|\n)', code)
 
 readme = search(
-    r'(?:\r\n|\r|\n){2}"""(.*)"""(?:\r\n|\r|\n){2}[__version__|from]',
+    r'(?:\r\n|\r|\n){2}"""(.*)"""(?:\r\n|\r|\n){2}from __future__',
     code,
     re.MULTILINE | re.DOTALL,
 )
@@ -73,6 +73,7 @@ setup(
     },
     python_requires='>=3.8',
     install_requires=['numpy>=1.19.2'],
+    extras_require={'all': ['tifffile', 'matplotlib']},
     platforms=['any'],
     classifiers=[
         'Development Status :: 4 - Beta',
