@@ -32,27 +32,43 @@
 """Read and write Netpbm files.
 
 Netpbmfile is a Python library to read and write image files in the Netpbm
-format as specified at http://netpbm.sourceforge.net/doc/.
+format as specified at http://netpbm.sourceforge.net/doc/
 
-The following Netpbm and Portable FloatMap formats are supported:
+The following Netpbm and related formats are supported:
 
-- PBM (bi-level)
-- PGM (grayscale)
-- PPM (color)
-- PAM (arbitrary)
-- XV thumbnail (RGB332, read-only)
-- Pf (float32 grayscale, read-only)
-- PF (float32 RGB, read-only)
-- PF4 (float32 RGBA, read-only)
-- PGX (signed grayscale, read-only)
+- PBM (Portable Bit Map): P1 (text) and P4 (binary)
+- PGM (Portable Gray Map): P2 (text) and P5 (binary)
+- PPM (Portable Pixel Map): P3 (text) and P6 (binary)
+- PNM (Portable Any Map): shorthand for PBM, PGM, and PPM collectively
+- PAM (Portable Arbitrary Map): P7, bilevel, gray, and rgb
+- PFM (Portable Float Map): Pf (gray), PF (rgb), and PF4 (rgba), read-only
+- PGX (Portable Graymap Signed): PG, signed grayscale, read-only
+- XV thumbnail: P7 332 (rgb332), read-only
 
-No gamma correction is performed. Only one image per file is supported.
+No gamma correction is performed.
 
 The PGX format is specified in ITU-T Rec. T.803.
 
 :Author: `Christoph Gohlke <https://www.cgohlke.com>`_
 :License: BSD 3-Clause
-:Version: 2022.9.12
+:Version: 2022.10.25
+
+Quickstart
+----------
+
+Install the netpbmfile package and all dependencies from the
+Python Package Index::
+
+    python -m pip install -U netpbmfile[all]
+
+View image and metadata stored in a Netpbm file::
+
+    python -m oiffile file.ppm
+
+See `Examples`_ for using the programming interface.
+
+Source code and support are available on
+`GitHub <https://github.com/cgohlke/netpbmfile>`_.
 
 Requirements
 ------------
@@ -60,12 +76,20 @@ Requirements
 This release has been tested with the following requirements and dependencies
 (other versions may work):
 
-- `CPython 3.8.10, 3.9.13, 3.10.7, 3.11.0rc2 <https://www.python.org>`_
-- `NumPy 1.22.4 <https://pypi.org/project/numpy/>`_
-- `Matplotlib 3.5.3 <https://pypi.org/project/matplotlib/>`_  (optional)
+- `CPython 3.8.10, 3.9.13, 3.10.8, 3.11.0 <https://www.python.org>`_
+- `NumPy 1.23.4 <https://pypi.org/project/numpy/>`_
+- `Matplotlib 3.6.1 <https://pypi.org/project/matplotlib/>`_  (optional)
 
 Revisions
 ---------
+
+2022.10.25
+
+- Read multi-image files.
+- Fix reading ASCII formats with trailing comments.
+- Fix writing maxval=1, depth=1 binary images.
+- Use tifffile.imshow for multi-image arrays if installed.
+- Change tupltypes to bytes according to specification (breaking).
 
 2022.9.12
 
@@ -120,13 +144,13 @@ Examples
 
 Save a numpy array to a Netpbm file in grayscale format:
 
->>> data = numpy.array([[0, 1], [65534, 65535]], dtype='uint16')
+>>> data = numpy.array([[0, 1], [65534, 65535]], dtype=numpy.uint16)
 >>> imwrite('_tmp.pgm', data)
 
 Read the image data from a Netpbm file as numpy array:
 
 >>> image = imread('_tmp.pgm')
->>> assert numpy.all(image == data)
+>>> numpy.testing.assert_equal(image, data)
 
 Access meta and image data in a Netpbm file:
 
@@ -143,15 +167,11 @@ dtype('>u2')
 65535
 b'P5'
 
-View the image stored in a Netpbm file from a command line::
-
-    python -m netpbmfile _tmp.pgm
-
 """
 
 from __future__ import annotations
 
-__version__ = '2022.9.12'
+__version__ = '2022.10.25'
 
 __all__ = ['imread', 'imwrite', 'imsave', 'NetpbmFile']
 
@@ -217,7 +237,7 @@ class NetpbmFile:
     dtype: numpy.dtype
     shape: tuple[int, ...]
     axes: str
-    tupltypes: list[bytes]
+    tupltypes: bytes
     _data: numpy.ndarray | None
     _fh: BinaryIO | None
 
@@ -243,7 +263,7 @@ class NetpbmFile:
         self.height = 0
         self.depth = 0
         self.maxval = 0
-        self.tupltypes = []
+        self.tupltypes = b''
         self.byteorder = '>'
         self.filename = ''
         self._data = None
@@ -334,7 +354,7 @@ class NetpbmFile:
             self.axes = 'YX'
             self.magicnum = b'P5' if maxval > 1 else b'P4'
         self.maxval = maxval
-        self.tupltypes = [NetpbmFile.MAGIC_NUMBER[self.magicnum]]
+        self.tupltypes = NetpbmFile.MAGIC_NUMBER[self.magicnum]
         self.header = self._header()
         self.dtype = data.dtype
         self._fh = None
@@ -392,7 +412,7 @@ class NetpbmFile:
             key, value = group.split()
             setattr(self, key.decode('ascii').lower(), int(value))
         matches = re.findall(br'(TUPLTYPE\s+\w+)', self.header)
-        self.tupltypes = [s.split(None, 1)[1] for s in matches]
+        self.tupltypes = b' '.join(s.split(None, 1)[1] for s in matches)
 
     def _read_pnm_header(self, data: bytes, /) -> None:
         """Read PNM header and initialize instance."""
@@ -422,7 +442,7 @@ class NetpbmFile:
         self.height = int(regroups[3])
         self.maxval = int(regroups[4])
         self.depth = 3 if self.magicnum in b'P3P6P7 332' else 1
-        self.tupltypes = [NetpbmFile.MAGIC_NUMBER[self.magicnum]]
+        self.tupltypes = NetpbmFile.MAGIC_NUMBER[self.magicnum]
 
     def _read_pf_header(self, data: bytes, /) -> None:
         """Read PF header and initialize instance."""
@@ -497,21 +517,37 @@ class NetpbmFile:
 
         depth = 1 if self.magicnum == b'P7 332' else self.depth
         shape = [-1, self.height, self.width, depth]
+        rawdata = fh.read()
 
         if self.magicnum in b'P1P2P3':
-            rawdata = fh.read()
             if self.magicnum == b'P1' and rawdata[1] != b' ':
-                datalist = [bytes([i]) for i in rawdata if i == 48 or i == 49]
+                datalist = [
+                    bytes([i])
+                    for line in rawdata.splitlines()
+                    for i in line.split(b'#')[0]
+                    if i == 48 or i == 49
+                ]
             else:
-                datalist = [i for i in rawdata.split() if i.isdigit()]
+                datalist = [
+                    i
+                    for line in rawdata.splitlines()
+                    for i in line.split(b'#')[0].split()
+                    if i.isdigit()
+                ]
             size = numpy.prod(shape[1:], dtype='int64')
+            size *= max(1, len(datalist) // size)
             data = numpy.array(datalist[:size], dtype).reshape(shape)
         else:
-            bilevel = self.maxval == 1 and self.magicnum not in b'PFPf'
+            bilevel = (
+                self.magicnum not in b'PFPf'
+                and self.maxval == 1
+                and self.depth == 1
+            )
             if bilevel:
                 shape[2] = int(math.ceil(self.width / 8))
             size = numpy.prod(shape[1:], dtype='int64') * dtype.itemsize
-            data = numpy.frombuffer(fh.read(size), dtype).reshape(shape)
+            size *= max(1, len(rawdata) // size)
+            data = numpy.frombuffer(rawdata[:size], dtype).reshape(shape)
             if bilevel:
                 data = numpy.unpackbits(data, axis=-2)[:, :, : self.width, :]
 
@@ -530,12 +566,12 @@ class NetpbmFile:
         fh.seek(0)
         fh.write(self._header(pam=pam))
         data = self.asarray(copy=False)
-        if self.maxval == 1:
+        if self.maxval == 1 and self.depth == 1:
             data = numpy.packbits(data, axis=-1)
         data.tofile(fh)
 
     def _header(self, *, pam: bool = False) -> bytes:
-        """Return file header as byte string."""
+        """Return file header."""
         if self.magicnum in b'PfPF4':
             raise ValueError('writing PF, Pf, and PF are not supported')
         if pam or self.magicnum == b'P7':
@@ -547,7 +583,8 @@ class NetpbmFile:
                     f'DEPTH {self.depth}',
                     f'MAXVAL {self.maxval}',
                     '\n'.join(
-                        f"TUPLTYPE {i.decode('ascii')}" for i in self.tupltypes
+                        f"TUPLTYPE {tt.decode('ascii')}"
+                        for tt in self.tupltypes.split(b' ')
                     ),
                     'ENDHDR\n',
                 )
@@ -615,6 +652,11 @@ def main(argv: list[str] | None = None, /, *, test: bool = False) -> int:
     from glob import glob
     from matplotlib import pyplot
 
+    try:
+        import tifffile
+    except ImportError:
+        tifffile = None
+
     if argv is None:
         argv = sys.argv
 
@@ -640,13 +682,13 @@ def main(argv: list[str] | None = None, /, *, test: bool = False) -> int:
                 img = pam.asarray(copy=False)
                 if test and pam.magicnum not in b'PfPF4':
                     # roundtrip testing
-                    pam.write('_tmp.pgm.out', pam=pam.magicnum != b'PG')
-                    img2 = imread('_tmp.pgm.out')
+                    pam.write('_tmp.netpbm', pam=pam.magicnum != b'PG')
+                    img2 = imread('_tmp.netpbm')
                     assert numpy.all(img == img2)
                     if pam.magicnum != b'PG':
                         # TODO: support writing PGX
-                        imsave('_tmp.pgm.out', img)
-                        img2 = imread('_tmp.pgm.out')
+                        imsave('_tmp.netpbm', img)
+                        img2 = imread('_tmp.netpbm')
                         assert numpy.all(img == img2)
                 print()
         except ValueError as exc:
@@ -657,30 +699,40 @@ def main(argv: list[str] | None = None, /, *, test: bool = False) -> int:
         cmap = 'gray' if (pam.maxval is None or pam.maxval > 1) else 'binary'
         dtype = img.dtype
         shape = img.shape
-        if img.ndim > 3 or (img.ndim > 2 and img.shape[-1] not in (3, 4)):
-            warnings.warn('displaying first image only')
-            img = img[0]
-        if img.shape[-1] in (3, 4) and pam.maxval != 255:
-            warnings.warn('converting RGB image for display')
-            maxval = float(
-                numpy.max(img) if pam.maxval is None else pam.maxval
-            )
-            if maxval > 0.0:
-                img = img / maxval
-            else:
-                img = img.copy()
-            img *= 255
-            numpy.rint(img, out=img)
-            numpy.clip(img, 0, 255, out=img)
-            img = img.astype('uint8')
-
-        pyplot.imshow(img, cmap, interpolation='nearest')
-        pyplot.title(
-            f"{os.path.split(fname)[-1]} "
-            f"{pam.magicnum.decode('ascii')} {shape} "
-            f"{dtype}"
+        title = (
+            f'{os.path.split(fname)[-1]} '
+            f'{pam.magicnum.decode("ascii")} {shape} '
+            f'{dtype}'
         )
-        pyplot.show()
+
+        multiimage = (
+            img.ndim > 3 or (img.ndim > 2 and img.shape[-1] not in (3, 4))
+        )
+        if tifffile is None or not multiimage:
+            if img.ndim > 3 or (img.ndim > 2 and img.shape[-1] not in (3, 4)):
+                warnings.warn('displaying first image only')
+                img = img[0]
+            if img.shape[-1] in (3, 4) and pam.maxval != 255:
+                warnings.warn('converting RGB image for display')
+                maxval = float(
+                    numpy.max(img) if pam.maxval is None else pam.maxval
+                )
+                if maxval > 0.0:
+                    img = img / maxval
+                else:
+                    img = img.copy()
+                img *= 255
+                numpy.rint(img, out=img)
+                numpy.clip(img, 0, 255, out=img)
+                img = img.astype('uint8')
+            pyplot.imshow(img, cmap, interpolation='nearest')
+            pyplot.title(title)
+            pyplot.show()
+        else:
+            photometric = 'RGB' if img.shape[-1] in (3, 4) else 'minisblack'
+            tifffile.imshow(
+                img, photometric=photometric, cmap=cmap, title=title, show=True
+            )
     return 0
 
 
