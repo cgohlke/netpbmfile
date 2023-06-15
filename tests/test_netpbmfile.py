@@ -29,7 +29,7 @@
 
 """Unittests for the netpbmfile package.
 
-:Version: 2023.1.1
+:Version: 2023.6.15
 
 """
 
@@ -325,6 +325,7 @@ FILES = [
 ]
 
 
+@pytest.mark.skipif(__doc__ is None, reason='__doc__ is None')
 def test_version():
     """Assert netpbmfile versions match docstrings."""
     ver = ':Version: ' + netpbmfile.__version__
@@ -401,7 +402,7 @@ def test_file(fname, magicnumber, dtype, axes, shape, maxval, hash):
         axes = axes[1:]
         shape = shape[1:]
 
-    with NetpbmFile(filepath, byteorder=byteorder) as fh:
+    with NetpbmFile(filepath, byteorder=byteorder) as fh:  # type: ignore
         assert str(fh)
         assert fh.magicnumber == magicnumber
         # assert fh.tupltype == tupltype
