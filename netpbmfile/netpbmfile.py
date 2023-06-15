@@ -51,7 +51,7 @@ No gamma correction or scaling is performed.
 
 :Author: `Christoph Gohlke <https://www.cgohlke.com>`_
 :License: BSD 3-Clause
-:Version: 2023.1.1
+:Version: 2023.6.15
 
 Quickstart
 ----------
@@ -69,14 +69,19 @@ Source code and support are available on
 Requirements
 ------------
 
-This release has been tested with the following requirements and dependencies
+This revision was tested with the following requirements and dependencies
 (other versions may work):
 
-- `CPython 3.8.10, 3.9.13, 3.10.9, 3.11.1 <https://www.python.org>`_
-- `NumPy 1.23.5 <https://pypi.org/project/numpy/>`_
+- `CPython <https://www.python.org>`_ 3.9.13, 3.10.11, 3.11.4, 3.12.0b2
+- `NumPy <https://pypi.org/project/numpy/>`_ 1.23.5
 
 Revisions
 ---------
+
+2023.6.15
+
+- Drop support for Python 3.8 and numpy < 1.21 (NEP29).
+- Improve type hints.
 
 2023.1.1
 
@@ -186,7 +191,7 @@ View the image and metadata in the Netpbm file from the command line::
 
 from __future__ import annotations
 
-__version__ = '2023.1.1'
+__version__ = '2023.6.15'
 
 __all__ = ['imread', 'imwrite', 'imsave', 'NetpbmFile']
 
@@ -198,19 +203,14 @@ import warnings
 
 import numpy
 
-
 from typing import TYPE_CHECKING
 
 if TYPE_CHECKING:
-    from typing import BinaryIO, Iterable, Literal, Union
+    from typing import Any, BinaryIO, Literal, Union
+    from collections.abc import Iterable
 
-    try:
-        from numpy.typing import ArrayLike
-    except ImportError:
-        # numpy < 1.20
-        from numpy import ndarray as ArrayLike
+    from numpy.typing import ArrayLike, NDArray
 
-    PathLike = Union[str, os.PathLike]
     ByteOrder = Union[Literal['>'], Literal['<']]
     MagicNumber = Union[
         Literal['P1'],
@@ -229,8 +229,11 @@ if TYPE_CHECKING:
 
 
 def imread(
-    file: PathLike | BinaryIO, /, *, byteorder: ByteOrder | None = None
-) -> numpy.ndarray:
+    file: str | os.PathLike[Any] | BinaryIO,
+    /,
+    *,
+    byteorder: ByteOrder | None = None,
+) -> NDArray[Any]:
     """Return image data from Netpbm file.
 
     Parameters:
@@ -248,7 +251,7 @@ def imread(
 
 
 def imwrite(
-    file: PathLike | BinaryIO,
+    file: str | os.PathLike[Any] | BinaryIO,
     data: ArrayLike,
     /,
     *,
@@ -343,13 +346,13 @@ class NetpbmFile:
     tupltype: str
     """Kind of PAM image."""
 
-    dtype: numpy.dtype
+    dtype: numpy.dtype[Any]
     """Data type of image array."""
 
     dataoffset: int
     """Position of image data in file."""
 
-    _data: numpy.ndarray | None
+    _data: NDArray[Any] | None
     _fh: BinaryIO | None
 
     MAGIC_NUMBER: dict[str, str] = {
@@ -369,7 +372,7 @@ class NetpbmFile:
 
     def __init__(
         self,
-        file: PathLike | BinaryIO | None,
+        file: str | os.PathLike[Any] | BinaryIO | None,
         /,
         *,
         byteorder: ByteOrder | None = None,
@@ -434,7 +437,7 @@ class NetpbmFile:
             dtype = 'bool_'
         elif self.magicnumber in 'PF4 Pf':
             dtype = self.byteorder + 'f4'
-        elif self.magicnumber == 'PG':
+        elif self.magicnumber in 'PG':
             dtype = self.byteorder + self.dtype.char
         elif self.maxval < 256:
             dtype = 'u1'
@@ -454,7 +457,7 @@ class NetpbmFile:
             shape = [
                 self.height,
                 int(math.ceil(self.width / 8))
-                if self.magicnumber == 'P4'
+                if self.magicnumber in 'P4'
                 else self.width,
                 self.depth,
                 self.dtype.itemsize,
@@ -617,7 +620,7 @@ class NetpbmFile:
         *,
         copy: bool = True,
         cache: bool = False,
-    ) -> numpy.ndarray:
+    ) -> NDArray[Any]:
         """Return image array.
 
         Parameters:
@@ -639,7 +642,7 @@ class NetpbmFile:
 
     def write(
         self,
-        file: PathLike | BinaryIO,
+        file: str | os.PathLike[Any] | BinaryIO,
         /,
         *,
         magicnumber: MagicNumber | None = None,
@@ -824,7 +827,7 @@ class NetpbmFile:
         else:
             raise ValueError(f'bitdepth {bitdepth} out of range')
 
-    def _read_data(self, fh: BinaryIO) -> numpy.ndarray:
+    def _read_data(self, fh: BinaryIO) -> NDArray[Any]:
         """Return image data from open file."""
         fh.seek(self.dataoffset)
 
@@ -1029,7 +1032,7 @@ class NetpbmFile:
     def __enter__(self) -> NetpbmFile:
         return self
 
-    def __exit__(self, exc_type, exc_value, traceback):
+    def __exit__(self, exc_type, exc_value, traceback):  # type: ignore
         self.close()
 
     def __repr__(self) -> str:
@@ -1063,7 +1066,7 @@ def product(iterable: Iterable[int], /) -> int:
     return prod
 
 
-def indent(*args) -> str:
+def indent(*args: Any) -> str:
     """Return joined string representations of objects with indented lines."""
     text = '\n'.join(str(arg) for arg in args)
     return '\n'.join(
@@ -1071,7 +1074,7 @@ def indent(*args) -> str:
     )[2:]
 
 
-def log_warning(msg, *args, **kwargs):
+def log_warning(msg: object, *args: object, **kwargs: Any) -> None:
     """Log message with level WARNING."""
     import logging
 
