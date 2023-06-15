@@ -21,7 +21,7 @@ No gamma correction or scaling is performed.
 
 :Author: `Christoph Gohlke <https://www.cgohlke.com>`_
 :License: BSD 3-Clause
-:Version: 2023.1.1
+:Version: 2023.6.15
 
 Quickstart
 ----------
@@ -39,14 +39,19 @@ Source code and support are available on
 Requirements
 ------------
 
-This release has been tested with the following requirements and dependencies
+This revision was tested with the following requirements and dependencies
 (other versions may work):
 
-- `CPython 3.8.10, 3.9.13, 3.10.9, 3.11.1 <https://www.python.org>`_
-- `NumPy 1.23.5 <https://pypi.org/project/numpy/>`_
+- `CPython <https://www.python.org>`_ 3.9.13, 3.10.11, 3.11.4, 3.12.0b2
+- `NumPy <https://pypi.org/project/numpy/>`_ 1.23.5
 
 Revisions
 ---------
+
+2023.6.15
+
+- Drop support for Python 3.8 and numpy < 1.21 (NEP29).
+- Improve type hints.
 
 2023.1.1
 
