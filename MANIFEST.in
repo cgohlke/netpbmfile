@@ -1,6 +1,8 @@
 include LICENSE
 include README.rst
 
+include netpbmfile/py.typed
+
 exclude *.cmd
 recursive-exclude doc *
 recursive-exclude docs *
