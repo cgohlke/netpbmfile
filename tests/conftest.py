@@ -11,7 +11,6 @@ if os.environ.get('VSCODE_CWD'):
 
 
 def pytest_report_header(config):
-
     try:
         pyversion = f'Python {sys.version.splitlines()[0]}'
         import netpbmfile
