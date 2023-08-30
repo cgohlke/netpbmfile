@@ -51,7 +51,7 @@ No gamma correction or scaling is performed.
 
 :Author: `Christoph Gohlke <https://www.cgohlke.com>`_
 :License: BSD 3-Clause
-:Version: 2023.6.15
+:Version: 2023.8.30
 
 Quickstart
 ----------
@@ -72,11 +72,16 @@ Requirements
 This revision was tested with the following requirements and dependencies
 (other versions may work):
 
-- `CPython <https://www.python.org>`_ 3.9.13, 3.10.11, 3.11.4, 3.12.0b2
-- `NumPy <https://pypi.org/project/numpy/>`_ 1.23.5
+- `CPython <https://www.python.org>`_ 3.9.13, 3.10.11, 3.11.5, 3.12rc
+- `NumPy <https://pypi.org/project/numpy/>`_ 1.25.2
 
 Revisions
 ---------
+
+2023.8.30
+
+- Fix linting issues.
+- Add py.typed marker.
 
 2023.6.15
 
@@ -191,23 +196,22 @@ View the image and metadata in the Netpbm file from the command line::
 
 from __future__ import annotations
 
-__version__ = '2023.6.15'
+__version__ = '2023.8.30'
 
 __all__ = ['imread', 'imwrite', 'imsave', 'NetpbmFile']
 
-import sys
+import math
 import os
 import re
-import math
+import sys
 import warnings
+from typing import TYPE_CHECKING
 
 import numpy
 
-from typing import TYPE_CHECKING
-
 if TYPE_CHECKING:
-    from typing import Any, BinaryIO, Literal, Union
     from collections.abc import Iterable
+    from typing import Any, BinaryIO, Literal, Union
 
     from numpy.typing import ArrayLike, NDArray
 
@@ -525,7 +529,7 @@ class NetpbmFile:
         self = cls(None)
 
         if magicnumber is None:
-            if data.ndim > 2 and data.shape[-1] in (3, 4):
+            if data.ndim > 2 and data.shape[-1] in {3, 4}:
                 # rgba
                 self.depth = data.shape[-1]
                 self.width = data.shape[-2]
@@ -601,7 +605,7 @@ class NetpbmFile:
             self.tupltype = tupltype
         elif magicnumber != 'P7':
             self.tupltype = NetpbmFile.MAGIC_NUMBER[self.magicnumber]
-        elif self.maxval == 1 and self.depth in (1, 2):
+        elif self.maxval == 1 and self.depth in {1, 2}:
             self.tupltype = 'BLACKANDWHITE'
             if self.depth == 2:
                 self.tupltype += '_ALPHA'
@@ -843,7 +847,7 @@ class NetpbmFile:
                     bytes([i])
                     for line in rawdata.splitlines()
                     for i in line.split(b'#')[0]
-                    if i == 48 or i == 49
+                    if i in {48, 49}
                 ]
             else:
                 datalist = [
@@ -1088,12 +1092,13 @@ def main(argv: list[str] | None = None) -> int:
 
     """
     from glob import glob
+
     from matplotlib import pyplot
 
     try:
         import tifffile
     except ImportError:
-        tifffile = None
+        tifffile = None  # type: ignore
 
     if argv is None:
         argv = sys.argv
@@ -1130,13 +1135,13 @@ def main(argv: list[str] | None = None) -> int:
         title = f'{os.path.split(fname)[-1]} {pam.magicnumber} {shape} {dtype}'
 
         multiimage = img.ndim > 3 or (
-            img.ndim > 2 and img.shape[-1] not in (3, 4)
+            img.ndim > 2 and img.shape[-1] not in {3, 4}
         )
         if tifffile is None or not multiimage:
-            if img.ndim > 3 or (img.ndim > 2 and img.shape[-1] not in (3, 4)):
+            if img.ndim > 3 or (img.ndim > 2 and img.shape[-1] not in {3, 4}):
                 warnings.warn('displaying first image only')
                 img = img[0]
-            if img.shape[-1] in (3, 4) and pam.maxval != 255:
+            if img.shape[-1] in {3, 4} and pam.maxval != 255:
                 warnings.warn('converting RGB image for display')
                 maxval = float(
                     numpy.max(img) if pam.maxval is None else pam.maxval
@@ -1153,7 +1158,7 @@ def main(argv: list[str] | None = None) -> int:
             pyplot.title(title)
             pyplot.show()
         else:
-            photometric = 'RGB' if img.shape[-1] in (3, 4) else 'minisblack'
+            photometric = 'RGB' if img.shape[-1] in {3, 4} else 'minisblack'
             tifffile.imshow(
                 img, photometric=photometric, cmap=cmap, title=title, show=True
             )
