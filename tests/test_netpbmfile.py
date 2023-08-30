@@ -29,22 +29,22 @@
 
 """Unittests for the netpbmfile package.
 
-:Version: 2023.6.15
+:Version: 2023.8.30
 
 """
 
+import hashlib
+import io
 import os
 import sys
 import tempfile
-import hashlib
-import io
 
-import pytest
 import numpy
+import pytest
 from numpy.testing import assert_array_equal
 
 import netpbmfile
-from netpbmfile import imread, imwrite, imsave, NetpbmFile  # noqa
+from netpbmfile import NetpbmFile, imread, imwrite  # noqa
 
 TEST_DIR = os.path.dirname(__file__)
 TEMP_DIR = os.path.join(TEST_DIR, '_tmp')
@@ -59,9 +59,8 @@ class TempFileName:
     def __init__(self, name=None, ext='', remove=False):
         self.remove = remove or TEMP_DIR == tempfile.gettempdir()
         if not name:
-            fh = tempfile.NamedTemporaryFile(prefix='test_')
-            self.name = fh.named
-            fh.close()
+            with tempfile.NamedTemporaryFile(prefix='test_') as fh:
+                self.name = fh.named
         else:
             self.name = os.path.join(TEMP_DIR, f'test_{name}{ext}')
 
@@ -83,8 +82,7 @@ def md5(a):
 
 def idfn(val):
     """Replace checksum bytes test IDs with 'md5'."""
-    if isinstance(val, bytes):
-        return 'md5'
+    return 'md5' if isinstance(val, bytes) else None
 
 
 # (4, 32, 31, 4) uint16, 12 bit
@@ -379,9 +377,9 @@ def test_roundtrip(name, magicnumber, multi, pam):
             if magicnumber not in 'P4 P5 P6':
                 return
             # export PNM as PAM
-            with TempFileName(fname + '.pam') as pam:
-                fh.write(pam, magicnumber='P7', comment=comment)
-                with NetpbmFile(pam) as fh2:
+            with TempFileName(fname + '.pam') as fn:
+                fh.write(fn, magicnumber='P7', comment=comment)
+                with NetpbmFile(fn) as fh2:
                     assert fh2.magicnumber == 'P7'
                     assert comment in fh2.header
                     assert_array_equal(fh.asarray(), data)
