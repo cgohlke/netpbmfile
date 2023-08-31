@@ -21,7 +21,7 @@ No gamma correction or scaling is performed.
 
 :Author: `Christoph Gohlke <https://www.cgohlke.com>`_
 :License: BSD 3-Clause
-:Version: 2023.6.15
+:Version: 2023.8.30
 
 Quickstart
 ----------
@@ -42,11 +42,16 @@ Requirements
 This revision was tested with the following requirements and dependencies
 (other versions may work):
 
-- `CPython <https://www.python.org>`_ 3.9.13, 3.10.11, 3.11.4, 3.12.0b2
-- `NumPy <https://pypi.org/project/numpy/>`_ 1.23.5
+- `CPython <https://www.python.org>`_ 3.9.13, 3.10.11, 3.11.5, 3.12rc
+- `NumPy <https://pypi.org/project/numpy/>`_ 1.25.2
 
 Revisions
 ---------
+
+2023.8.30
+
+- Fix linting issues.
+- Add py.typed marker.
 
 2023.6.15
 
