@@ -13,7 +13,7 @@ or related formats:
 - PFM (Portable Float Map): Pf (gray), PF (rgb), and PF4 (rgba), read-only
 - XV thumbnail: P7 332 (rgb332), read-only
 
-The Netpbm formats are specified at http://netpbm.sourceforge.net/doc/.
+The Netpbm formats are specified at https://netpbm.sourceforge.net/doc/.
 
 The PGX format is specified in ITU-T Rec. T.803.
 
@@ -21,7 +21,7 @@ No gamma correction or scaling is performed.
 
 :Author: `Christoph Gohlke <https://www.cgohlke.com>`_
 :License: BSD 3-Clause
-:Version: 2023.8.30
+:Version: 2024.4.24
 
 Quickstart
 ----------
@@ -42,11 +42,15 @@ Requirements
 This revision was tested with the following requirements and dependencies
 (other versions may work):
 
-- `CPython <https://www.python.org>`_ 3.9.13, 3.10.11, 3.11.5, 3.12rc
-- `NumPy <https://pypi.org/project/numpy/>`_ 1.25.2
+- `CPython <https://www.python.org>`_ 3.9.13, 3.10.11, 3.11.9, 3.12.3
+- `NumPy <https://pypi.org/project/numpy/>`_ 1.26.4
 
 Revisions
 ---------
+
+2024.4.24
+
+- Support NumPy 2.
 
 2023.8.30
 
