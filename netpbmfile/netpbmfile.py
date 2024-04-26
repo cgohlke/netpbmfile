@@ -1,6 +1,6 @@
 # netpbmfile.py
 
-# Copyright (c) 2011-2023, Christoph Gohlke
+# Copyright (c) 2011-2024, Christoph Gohlke
 # All rights reserved.
 #
 # Redistribution and use in source and binary forms, with or without
@@ -43,7 +43,7 @@ or related formats:
 - PFM (Portable Float Map): Pf (gray), PF (rgb), and PF4 (rgba), read-only
 - XV thumbnail: P7 332 (rgb332), read-only
 
-The Netpbm formats are specified at http://netpbm.sourceforge.net/doc/.
+The Netpbm formats are specified at https://netpbm.sourceforge.net/doc/.
 
 The PGX format is specified in ITU-T Rec. T.803.
 
@@ -51,7 +51,7 @@ No gamma correction or scaling is performed.
 
 :Author: `Christoph Gohlke <https://www.cgohlke.com>`_
 :License: BSD 3-Clause
-:Version: 2023.8.30
+:Version: 2024.4.24
 
 Quickstart
 ----------
@@ -72,11 +72,15 @@ Requirements
 This revision was tested with the following requirements and dependencies
 (other versions may work):
 
-- `CPython <https://www.python.org>`_ 3.9.13, 3.10.11, 3.11.5, 3.12rc
-- `NumPy <https://pypi.org/project/numpy/>`_ 1.25.2
+- `CPython <https://www.python.org>`_ 3.9.13, 3.10.11, 3.11.9, 3.12.3
+- `NumPy <https://pypi.org/project/numpy/>`_ 1.26.4
 
 Revisions
 ---------
+
+2024.4.24
+
+- Support NumPy 2.
 
 2023.8.30
 
@@ -196,7 +200,7 @@ View the image and metadata in the Netpbm file from the command line::
 
 from __future__ import annotations
 
-__version__ = '2023.8.30'
+__version__ = '2024.4.24'
 
 __all__ = ['imread', 'imwrite', 'imsave', 'NetpbmFile']
 
@@ -211,24 +215,24 @@ import numpy
 
 if TYPE_CHECKING:
     from collections.abc import Iterable
-    from typing import Any, BinaryIO, Literal, Union
+    from typing import Any, BinaryIO, Literal
 
     from numpy.typing import ArrayLike, NDArray
 
-    ByteOrder = Union[Literal['>'], Literal['<']]
-    MagicNumber = Union[
-        Literal['P1'],
-        Literal['P2'],
-        Literal['P3'],
-        Literal['P4'],
-        Literal['P5'],
-        Literal['P6'],
-        Literal['P7'],
-        Literal['PG'],
-        Literal['Pf'],
-        Literal['PF'],
-        Literal['PF4'],
-        Literal['P7 332'],
+    ByteOrder = Literal['>', '<']
+    MagicNumber = Literal[
+        'P1',
+        'P2',
+        'P3',
+        'P4',
+        'P5',
+        'P6',
+        'P7',
+        'PG',
+        'Pf',
+        'PF',
+        'PF4',
+        'P7 332',
     ]
 
 
@@ -460,9 +464,11 @@ class NetpbmFile:
             bytecount = self._fh.seek(0, 2) - len(self.header)
             shape = [
                 self.height,
-                int(math.ceil(self.width / 8))
-                if self.magicnumber in 'P4'
-                else self.width,
+                (
+                    int(math.ceil(self.width / 8))
+                    if self.magicnumber in 'P4'
+                    else self.width
+                ),
                 self.depth,
                 self.dtype.itemsize,
             ]
@@ -513,9 +519,9 @@ class NetpbmFile:
 
         if maxval is None:
             if issigned:
-                maxval = numpy.max(numpy.abs(data))
+                maxval = int(numpy.max(numpy.abs(data)))
             else:
-                maxval = numpy.max(data)
+                maxval = int(numpy.max(data))
             if maxval == 1:
                 maxval = 1
             else:
@@ -577,19 +583,23 @@ class NetpbmFile:
 
         if magicnumber == 'PG' and data.dtype.kind == 'i':
             self._data = data.astype(
-                'i1'
-                if maxval < 128
-                else (
-                    cls.byteorder + 'i2'
-                    if maxval < 32768
-                    else cls.byteorder + 'i4'
-                )
+                (
+                    'i1'
+                    if maxval < 128
+                    else (
+                        cls.byteorder + 'i2'
+                        if maxval < 32768
+                        else cls.byteorder + 'i4'
+                    )
+                ),
+                copy=False,
             )
         elif magicnumber in 'P1 P4':
-            self._data = data.astype('bool')
+            self._data = data.astype('bool', copy=False)
         else:
             self._data = data.astype(
-                'u1' if maxval < 256 else ('>u2' if maxval < 65536 else '>u4')
+                'u1' if maxval < 256 else ('>u2' if maxval < 65536 else '>u4'),
+                copy=False,
             )
 
         self.frames = max(
@@ -869,7 +879,7 @@ class NetpbmFile:
                 data = numpy.unpackbits(data, axis=-2)[:, :, : self.width, :]
 
         if bilevel:
-            data = data.astype('bool')
+            data = data.astype('bool', copy=False)
 
         if data.shape[0] < 2:
             data = data.reshape(data.shape[1:])
@@ -1056,9 +1066,11 @@ class NetpbmFile:
             f'shape: {self.shape}',
             f'dtype: {self.dtype}',
             # f'byteorder: {self.byteorder}',
-            f'scale: {self.scale}'
-            if self.magicnumber in 'PF4 Pf'
-            else f'maxval: {self.maxval}',
+            (
+                f'scale: {self.scale}'
+                if self.magicnumber in 'PF4 Pf'
+                else f'maxval: {self.maxval}'
+            ),
         )
 
 
