@@ -1,6 +1,6 @@
 # test_netpbmfile.py
 
-# Copyright (c) 2011-2023, Christoph Gohlke
+# Copyright (c) 2011-2024, Christoph Gohlke
 # All rights reserved.
 #
 # Redistribution and use in source and binary forms, with or without
@@ -29,7 +29,7 @@
 
 """Unittests for the netpbmfile package.
 
-:Version: 2023.8.30
+:Version: 2024.4.24
 
 """
 
@@ -39,12 +39,11 @@ import os
 import sys
 import tempfile
 
+import netpbmfile
 import numpy
 import pytest
-from numpy.testing import assert_array_equal
-
-import netpbmfile
 from netpbmfile import NetpbmFile, imread, imwrite  # noqa
+from numpy.testing import assert_array_equal
 
 TEST_DIR = os.path.dirname(__file__)
 TEMP_DIR = os.path.join(TEST_DIR, '_tmp')
