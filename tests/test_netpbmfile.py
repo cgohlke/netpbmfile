@@ -29,7 +29,7 @@
 
 """Unittests for the netpbmfile package.
 
-:Version: 2024.4.24
+:Version: 2024.5.24
 
 """
 
