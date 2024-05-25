@@ -51,7 +51,7 @@ No gamma correction or scaling is performed.
 
 :Author: `Christoph Gohlke <https://www.cgohlke.com>`_
 :License: BSD 3-Clause
-:Version: 2024.4.24
+:Version: 2024.5.24
 
 Quickstart
 ----------
@@ -59,7 +59,7 @@ Quickstart
 Install the netpbmfile package and all dependencies from the
 `Python Package Index <https://pypi.org/project/netpbmfile/>`_::
 
-    python -m pip install -U netpbmfile[all]
+    python -m pip install -U "netpbmfile[all]"
 
 See `Examples`_ for using the programming interface.
 
@@ -77,6 +77,10 @@ This revision was tested with the following requirements and dependencies
 
 Revisions
 ---------
+
+2024.5.24
+
+- Fix docstring examples not correctly rendered on GitHub.
 
 2024.4.24
 
@@ -109,59 +113,9 @@ Revisions
 
 2022.10.25
 
-- Read multi-image files.
-- Fix reading ASCII formats with trailing comments.
-- Fix writing maxval=1, depth=1 binary images.
-- Use tifffile.imshow for multi-image arrays if installed.
-- Change tupltypes to bytes according to specification (breaking).
+- …
 
-2022.9.12
-
-- Allow space after token value in PAM.
-- Update metadata.
-
-2022.2.2
-
-- Add type hints.
-- Support reading PF4 RGBA FloatMaps.
-- Drop support for Python 3.7 and numpy < 1.19 (NEP29).
-
-2021.6.6
-
-- Fix unclosed file warnings.
-- Support reading PGX JPEG2000 reference images.
-
-2020.10.18
-
-- Disallow comments after last value in PNM headers.
-
-2020.9.18
-
-- Remove support for Python 3.6 (NEP 29).
-- Support os.PathLike file names.
-
-2020.1.1
-
-- Fix reading tightly packed P1 format and ASCII data with inline comments.
-- Remove support for Python 2.7 and 3.5.
-- Update copyright.
-
-2018.10.18
-
-- Move netpbmfile.py into netpbmfile package.
-
-2018.02.18
-
-- Support reading Portable FloatMaps.
-- Style fixes.
-
-2016.02.24
-
-- Use fromdata classmethod to initialize from data.
-- Support with statement.
-- Scale RGB images to maxval for display.
-- Make keyword arguments explicit.
-- Support numpy 1.10.
+Refer to the CHANGES file for older revisions.
 
 Examples
 --------
@@ -185,6 +139,7 @@ Access meta and image data in a Netpbm file:
 ...     pgm.dtype
 ...     pgm.maxval
 ...     pgm.asarray().tolist()
+...
 'P5'
 'YX'
 (2, 2)
@@ -200,7 +155,7 @@ View the image and metadata in the Netpbm file from the command line::
 
 from __future__ import annotations
 
-__version__ = '2024.4.24'
+__version__ = '2024.5.24'
 
 __all__ = ['imread', 'imwrite', 'imsave', 'NetpbmFile']
 
