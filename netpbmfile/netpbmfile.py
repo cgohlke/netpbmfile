@@ -1,6 +1,6 @@
 # netpbmfile.py
 
-# Copyright (c) 2011-2024, Christoph Gohlke
+# Copyright (c) 2011-2025, Christoph Gohlke
 # All rights reserved.
 #
 # Redistribution and use in source and binary forms, with or without
@@ -51,7 +51,7 @@ No gamma correction or scaling is performed.
 
 :Author: `Christoph Gohlke <https://www.cgohlke.com>`_
 :License: BSD 3-Clause
-:Version: 2024.5.24
+:Version: 2025.1.1
 
 Quickstart
 ----------
@@ -68,15 +68,19 @@ Source code and support are available on
 
 Requirements
 ------------
-
 This revision was tested with the following requirements and dependencies
 (other versions may work):
 
-- `CPython <https://www.python.org>`_ 3.9.13, 3.10.11, 3.11.9, 3.12.3
-- `NumPy <https://pypi.org/project/numpy/>`_ 1.26.4
+- `CPython <https://www.python.org>`_ 3.10.11, 3.11.9, 3.12.8, 3.13.1 64-bit
+- `NumPy <https://pypi.org/project/numpy/>`_ 2.1.3
 
 Revisions
 ---------
+
+2025.1.1
+
+- Improve type hints.
+- Drop support for Python 3.9, support Python 3.13.
 
 2024.5.24
 
@@ -155,9 +159,9 @@ View the image and metadata in the Netpbm file from the command line::
 
 from __future__ import annotations
 
-__version__ = '2024.5.24'
+__version__ = '2025.1.1'
 
-__all__ = ['imread', 'imwrite', 'imsave', 'NetpbmFile']
+__all__ = ['__version__', 'imread', 'imwrite', 'imsave', 'NetpbmFile']
 
 import math
 import os
@@ -396,11 +400,11 @@ class NetpbmFile:
         if byteorder is not None:
             self.byteorder = byteorder
 
-        if self.magicnumber in 'P1 P4':
+        if self.magicnumber in {'P1', 'P4'}:
             dtype = 'bool_'
-        elif self.magicnumber in 'PF4 Pf':
+        elif self.magicnumber in {'PF', 'PF4', 'Pf'}:
             dtype = self.byteorder + 'f4'
-        elif self.magicnumber in 'PG':
+        elif self.magicnumber in {'PG'}:
             dtype = self.byteorder + self.dtype.char
         elif self.maxval < 256:
             dtype = 'u1'
@@ -409,11 +413,11 @@ class NetpbmFile:
         elif self.maxval < 2**32:
             dtype = self.byteorder + 'u4'
         else:
-            raise ValueError(f'maxval {self.maxval} out of range')
+            raise ValueError(f'{self.maxval=} out of range')
 
         self.dtype = numpy.dtype(dtype)
 
-        if self.magicnumber in 'P1 P2 P3':
+        if self.magicnumber in {'P1', 'P2', 'P3'}:
             self.frames = 1
         else:
             bytecount = self._fh.seek(0, 2) - len(self.header)
@@ -421,7 +425,7 @@ class NetpbmFile:
                 self.height,
                 (
                     int(math.ceil(self.width / 8))
-                    if self.magicnumber in 'P4'
+                    if self.magicnumber in {'P4'}
                     else self.width
                 ),
                 self.depth,
@@ -468,8 +472,7 @@ class NetpbmFile:
                 magicnumber = 'PG'
             elif magicnumber != 'PG':
                 raise ValueError(
-                    f'invalid dtype {data.dtype!r} for '
-                    f'magicnumber {magicnumber!r}'
+                    f'invalid {data.dtype=!r} for {magicnumber=!r}'
                 )
 
         if maxval is None:
@@ -485,7 +488,7 @@ class NetpbmFile:
                 )
         if not 0 < maxval < 2**32:
             # allow maxval > 65535
-            raise ValueError(f'maxval {maxval} of range')
+            raise ValueError(f'{maxval=} of range')
 
         self = cls(None)
 
@@ -512,29 +515,24 @@ class NetpbmFile:
                 self.depth = 1
                 self.width = data.shape[-1]
                 self.height = data.shape[-2]
-        elif magicnumber in 'P3 P6':
+        elif magicnumber in {'P3', 'P6'}:
             # rgb
             if data.ndim < 3 or data.shape[-1] != 3:
-                raise ValueError(
-                    f'invalid magicnumber {magicnumber!r} '
-                    f'for shape {data.shape}'
-                )
+                raise ValueError(f'invalid {magicnumber=!r} for {data.shape=}')
             self.depth = data.shape[-1]
             self.width = data.shape[-2]
             self.height = data.shape[-3]
-        elif magicnumber in 'P1 P2 P4 P5 PG':
+        elif magicnumber in {'P1', 'P2', 'P4', 'P5', 'PG'}:
             # bilevel or gray
-            if magicnumber in 'P1 P4' and maxval != 1:
-                raise ValueError(
-                    f'invalid magicnumber {magicnumber!r} for maxval {maxval}'
-                )
+            if magicnumber in {'P1', 'P4'} and maxval != 1:
+                raise ValueError(f'invalid {magicnumber=!r} for {maxval=}')
             if magicnumber == 'PG':
                 cls.byteorder = '<' if data.dtype.byteorder in '<|=' else '>'
             self.depth = 1
             self.width = data.shape[-1]
             self.height = data.shape[-2]
         else:
-            raise ValueError(f'invalid magicnumber {magicnumber}')
+            raise ValueError(f'invalid {magicnumber=}')
 
         if magicnumber == 'PG' and data.dtype.kind == 'i':
             self._data = data.astype(
@@ -549,7 +547,7 @@ class NetpbmFile:
                 ),
                 copy=False,
             )
-        elif magicnumber in 'P1 P4':
+        elif magicnumber in {'P1', 'P4'}:
             self._data = data.astype('bool', copy=False)
         else:
             self._data = data.astype(
@@ -560,6 +558,7 @@ class NetpbmFile:
         self.frames = max(
             1, product(data.shape) // (self.height * self.width * self.depth)
         )
+        assert magicnumber is not None
         self.magicnumber = magicnumber
         self.maxval = maxval
         self.dtype = self._data.dtype
@@ -723,11 +722,13 @@ class NetpbmFile:
         regroups = regroups + (1,) * bpm
         self.dataoffset = len(regroups[0])
         self.header = regroups[0].decode(errors='ignore')
-        self.magicnumber = regroups[1].decode()  # type: ignore
+        self.magicnumber = regroups[1].decode()  # type: ignore[assignment]
         self.width = int(regroups[2])
         self.height = int(regroups[3])
         self.maxval = int(regroups[4])
-        self.depth = 3 if self.magicnumber in 'P3 P6 P7 332' else 1
+        self.depth = (
+            3 if self.magicnumber in {'P3', 'P6', 'P7', 'P7 332'} else 1
+        )
         self.tupltype = NetpbmFile.MAGIC_NUMBER[self.magicnumber]
 
     def _read_pf_header(self, data: bytes, /) -> None:
@@ -746,7 +747,7 @@ class NetpbmFile:
         regroups = match.groups()
         self.dataoffset = len(regroups[0])
         self.header = regroups[0].decode(errors='ignore')
-        self.magicnumber = regroups[1].decode()  # type: ignore
+        self.magicnumber = regroups[1].decode()  # type: ignore[assignment]
         self.width = int(regroups[2])
         self.height = int(regroups[3])
         self.scale = abs(float(regroups[4]))
@@ -758,7 +759,7 @@ class NetpbmFile:
         elif self.magicnumber == 'Pf':
             self.depth = 1
         else:
-            raise ValueError(f'invalid magicnumber {self.magicnumber!r}')
+            raise ValueError(f'invalid {self.magicnumber=!r}')
 
     def _read_pg_header(self, data: bytes, /) -> None:
         """Read PG header and initialize instance."""
@@ -775,7 +776,7 @@ class NetpbmFile:
         regroups = match.groups()
         self.dataoffset = len(regroups[0])
         self.header = regroups[0].decode(errors='ignore')
-        self.magicnumber = regroups[1].decode()  # type: ignore
+        self.magicnumber = regroups[1].decode()  # type: ignore[assignment]
         self.byteorder = '>' if (regroups[2] == b'ML') else '<'
         signed = regroups[3] == b'-'
         bitdepth = int(regroups[4])
@@ -794,19 +795,19 @@ class NetpbmFile:
                 self.byteorder + ('i4' if signed else 'u4')
             )
         else:
-            raise ValueError(f'bitdepth {bitdepth} out of range')
+            raise ValueError(f'{bitdepth=} out of range')
 
     def _read_data(self, fh: BinaryIO) -> NDArray[Any]:
         """Return image data from open file."""
         fh.seek(self.dataoffset)
 
-        bilevel = self.magicnumber in 'P1 P4'
+        bilevel = self.magicnumber in {'P1', 'P4'}
         dtype = self.dtype if not bilevel else numpy.dtype('u1')
         depth = self.depth if self.magicnumber != 'P7 332' else 1
         shape = [-1, self.height, self.width, depth]
         rawdata = fh.read()
 
-        if self.magicnumber in 'P1 P2 P3':
+        if self.magicnumber in {'P1', 'P2', 'P3'}:
             if bilevel and rawdata.strip()[1:2] in b'01':
                 datalist = [
                     bytes([i])
@@ -859,7 +860,7 @@ class NetpbmFile:
         if magicnumber is None:
             magicnumber = self.magicnumber
         if magicnumber not in NetpbmFile.MAGIC_NUMBER:
-            raise ValueError(f'invalid magicnumber {magicnumber!r}')
+            raise ValueError(f'invalid {magicnumber=!r}')
 
         fh.seek(0)
         fh.write(
@@ -874,7 +875,7 @@ class NetpbmFile:
             data = self._data
 
         # data type/shape verification done in fromdata() and _header()
-        if magicnumber in 'P1':
+        if magicnumber == 'P1':
             assert self.maxval == 1
             assert self.depth == 1
             assert data.dtype.kind == 'b'
@@ -972,13 +973,13 @@ class NetpbmFile:
                     f'{self.width} ' f'{self.height}\n',
                 )
             )
-        if magicnumber in 'P1 P4':
+        if magicnumber in {'P1', 'P4'}:
             if self.maxval != 1 or self.depth != 1 or self.dtype.kind != 'b':
                 raise ValueError(
                     f'data not compatible with {magicnumber!r} format'
                 )
             return f'{magicnumber}{comment}{self.width} {self.height}\n'
-        if magicnumber in 'P2 P5':
+        if magicnumber in {'P2', 'P5'}:
             if self.depth != 1 or self.dtype.kind not in 'ui':
                 raise ValueError(
                     f'data not compatible with {magicnumber!r} format'
@@ -987,7 +988,7 @@ class NetpbmFile:
                 f'{magicnumber}{comment}'
                 f'{self.width} {self.height} {self.maxval}\n'
             )
-        if magicnumber in 'P3 P6':
+        if magicnumber in {'P3', 'P6'}:
             if self.depth != 3 or self.dtype.kind not in 'ui':
                 raise ValueError(
                     f'data not compatible with {magicnumber!r} format'
@@ -1001,7 +1002,7 @@ class NetpbmFile:
     def __enter__(self) -> NetpbmFile:
         return self
 
-    def __exit__(self, exc_type, exc_value, traceback):  # type: ignore
+    def __exit__(self, exc_type: Any, exc_value: Any, traceback: Any) -> None:
         self.close()
 
     def __repr__(self) -> str:
@@ -1023,7 +1024,7 @@ class NetpbmFile:
             # f'byteorder: {self.byteorder}',
             (
                 f'scale: {self.scale}'
-                if self.magicnumber in 'PF4 Pf'
+                if self.magicnumber in {'PF', 'PF4', 'Pf'}
                 else f'maxval: {self.maxval}'
             ),
         )
@@ -1062,10 +1063,11 @@ def main(argv: list[str] | None = None) -> int:
 
     from matplotlib import pyplot
 
+    tifffile: Any
     try:
         import tifffile
     except ImportError:
-        tifffile = None  # type: ignore
+        tifffile = None
 
     if argv is None:
         argv = sys.argv
@@ -1111,7 +1113,9 @@ def main(argv: list[str] | None = None) -> int:
             if img.shape[-1] in {3, 4} and pam.maxval != 255:
                 warnings.warn('converting RGB image for display')
                 maxval = float(
-                    numpy.max(img) if pam.maxval is None else pam.maxval
+                    numpy.max(img)
+                    if pam.maxval is None  # type: ignore[redundant-expr]
+                    else pam.maxval
                 )
                 if maxval > 0.0:
                     img = img / maxval
