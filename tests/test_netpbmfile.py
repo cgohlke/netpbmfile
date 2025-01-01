@@ -1,6 +1,6 @@
 # test_netpbmfile.py
 
-# Copyright (c) 2011-2024, Christoph Gohlke
+# Copyright (c) 2011-2025, Christoph Gohlke
 # All rights reserved.
 #
 # Redistribution and use in source and binary forms, with or without
@@ -27,9 +27,12 @@
 # ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE
 # POSSIBILITY OF SUCH DAMAGE.
 
+# mypy: allow-untyped-defs
+# mypy: check-untyped-defs=False
+
 """Unittests for the netpbmfile package.
 
-:Version: 2024.5.24
+:Version: 2025.1.1
 
 """
 
@@ -399,7 +402,7 @@ def test_file(fname, magicnumber, dtype, axes, shape, maxval, hash):
         axes = axes[1:]
         shape = shape[1:]
 
-    with NetpbmFile(filepath, byteorder=byteorder) as fh:  # type: ignore
+    with NetpbmFile(filepath, byteorder=byteorder) as fh:
         assert str(fh)
         assert fh.magicnumber == magicnumber
         # assert fh.tupltype == tupltype
