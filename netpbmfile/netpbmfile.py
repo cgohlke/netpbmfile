@@ -50,8 +50,8 @@ The PGX format is specified in ITU-T Rec. T.803.
 No gamma correction or scaling is performed.
 
 :Author: `Christoph Gohlke <https://www.cgohlke.com>`_
-:License: BSD 3-Clause
-:Version: 2025.1.1
+:License: BSD-3-Clause
+:Version: 2025.5.8
 
 Quickstart
 ----------
@@ -71,11 +71,15 @@ Requirements
 This revision was tested with the following requirements and dependencies
 (other versions may work):
 
-- `CPython <https://www.python.org>`_ 3.10.11, 3.11.9, 3.12.8, 3.13.1 64-bit
-- `NumPy <https://pypi.org/project/numpy/>`_ 2.1.3
+- `CPython <https://www.python.org>`_ 3.10.11, 3.11.9, 3.12.9, 3.13.2 64-bit
+- `NumPy <https://pypi.org/project/numpy/>`_ 2.2.5
 
 Revisions
 ---------
+
+2025.5.8
+
+- Remove doctest command line option.
 
 2025.1.1
 
@@ -126,6 +130,7 @@ Examples
 
 Write a numpy array to a Netpbm file in grayscale binary format:
 
+>>> import numpy
 >>> data = numpy.array([[0, 1], [65534, 65535]], dtype=numpy.uint16)
 >>> imwrite('_tmp.pgm', data)
 
@@ -159,10 +164,11 @@ View the image and metadata in the Netpbm file from the command line::
 
 from __future__ import annotations
 
-__version__ = '2025.1.1'
+__version__ = '2025.5.8'
 
 __all__ = ['__version__', 'imread', 'imwrite', 'imsave', 'NetpbmFile']
 
+import logging
 import math
 import os
 import re
@@ -880,23 +886,23 @@ class NetpbmFile:
             assert self.depth == 1
             assert data.dtype.kind == 'b'
             if self.frames > 1:
-                log_warning('writing non-compliant multi-image file')
+                logger().warning('writing non-compliant multi-image file')
             # one line per sample
             numpy.savetxt(fh, data.reshape(-1), fmt='%i')
         elif magicnumber == 'P2':
             if self.maxval > 65535:
-                log_warning('writing non-compliant maxval {self.maxval}')
+                logger().warning('writing non-compliant maxval {self.maxval}')
             if self.frames > 1:
-                log_warning('writing non-compliant multi-image file')
+                logger().warning('writing non-compliant multi-image file')
             assert self.depth == 1
             assert data.dtype.kind in 'iu'
             # one line per sample
             numpy.savetxt(fh, data.reshape(-1), fmt='%i')
         elif magicnumber == 'P3':
             if self.maxval > 65535:
-                log_warning('writing non-compliant maxval {self.maxval}')
+                logger().warning('writing non-compliant maxval {self.maxval}')
             if self.frames > 1:
-                log_warning('writing non-compliant multi-image file')
+                logger().warning('writing non-compliant multi-image file')
             assert self.depth == 3
             assert data.dtype.kind in 'iu'
             # one line per sample
@@ -1046,11 +1052,9 @@ def indent(*args: Any) -> str:
     )[2:]
 
 
-def log_warning(msg: object, *args: object, **kwargs: Any) -> None:
-    """Log message with level WARNING."""
-    import logging
-
-    logging.getLogger('netpbmfile').warning(msg, *args, **kwargs)
+def logger() -> logging.Logger:
+    """Return logger for netpbmfile module."""
+    return logging.getLogger('netpbmfile')
 
 
 def main(argv: list[str] | None = None) -> int:
@@ -1071,12 +1075,6 @@ def main(argv: list[str] | None = None) -> int:
 
     if argv is None:
         argv = sys.argv
-
-    if len(argv) > 1 and '--doctest' in argv:
-        import doctest
-
-        doctest.testmod()
-        return 0
 
     if len(argv) == 1:
         files = glob('*.p*')
