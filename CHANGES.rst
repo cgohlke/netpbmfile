@@ -1,6 +1,10 @@
 Revisions
 ---------
 
+2025.5.8
+
+- Remove doctest command line option.
+
 2025.1.1
 
 - Improve type hints.
