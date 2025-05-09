@@ -32,7 +32,7 @@
 
 """Unittests for the netpbmfile package.
 
-:Version: 2025.1.1
+:Version: 2025.5.8
 
 """
 
