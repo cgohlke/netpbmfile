@@ -23,8 +23,8 @@ The PGX format is specified in ITU-T Rec. T.803.
 No gamma correction or scaling is performed.
 
 :Author: `Christoph Gohlke <https://www.cgohlke.com>`_
-:License: BSD 3-Clause
-:Version: 2025.1.1
+:License: BSD-3-Clause
+:Version: 2025.5.8
 
 Quickstart
 ----------
@@ -44,11 +44,15 @@ Requirements
 This revision was tested with the following requirements and dependencies
 (other versions may work):
 
-- `CPython <https://www.python.org>`_ 3.10.11, 3.11.9, 3.12.8, 3.13.1 64-bit
-- `NumPy <https://pypi.org/project/numpy/>`_ 2.1.3
+- `CPython <https://www.python.org>`_ 3.10.11, 3.11.9, 3.12.9, 3.13.2 64-bit
+- `NumPy <https://pypi.org/project/numpy/>`_ 2.2.5
 
 Revisions
 ---------
+
+2025.5.8
+
+- Remove doctest command line option.
 
 2025.1.1
 
@@ -101,6 +105,7 @@ Write a numpy array to a Netpbm file in grayscale binary format:
 
 .. code-block:: python
 
+    >>> import numpy
     >>> data = numpy.array([[0, 1], [65534, 65535]], dtype=numpy.uint16)
     >>> imwrite('_tmp.pgm', data)
 
