@@ -5,7 +5,11 @@ include pyproject.toml
 
 include netpbmfile/py.typed
 
+exclude .env
 exclude *.cmd
+exclude *.yaml
+exclude mypy.ini
+exclude ruff.toml
 recursive-exclude doc *
 recursive-exclude docs *
 recursive-exclude test *
