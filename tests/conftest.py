@@ -1,5 +1,7 @@
 # netpbmfile/tests/conftest.py
 
+"""Pytest configuration."""
+
 import os
 import sys
 
@@ -10,15 +12,15 @@ if os.environ.get('VSCODE_CWD'):
     )
 
 
-def pytest_report_header(config):
+def pytest_report_header(config: object) -> str:
+    """Return pytest report header."""
     try:
-        pyversion = f'Python {sys.version.splitlines()[0]}'
         import netpbmfile
 
-        return '{}\npackagedir: {}\nversion: netpbmfile {}'.format(
-            pyversion,
-            netpbmfile.__path__[0],
-            netpbmfile.__version__,
+        return (
+            f'Python {sys.version.splitlines()[0]}\n'
+            f'packagedir: {netpbmfile.__path__[0]}\n'
+            f'version: netpbmfile {netpbmfile.__version__}'
         )
     except Exception as exc:
         return f'pytest_report_header failed: {exc!s}'
