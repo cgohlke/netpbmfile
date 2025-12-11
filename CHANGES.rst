@@ -1,6 +1,10 @@
 Revisions
 ---------
 
+2025.12.12
+
+- Drop support for Python 3.10, support Python 3.14.
+
 2025.5.8
 
 - Remove doctest command line option.
