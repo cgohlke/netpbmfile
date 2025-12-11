@@ -32,7 +32,7 @@
 
 """Unittests for the netpbmfile package.
 
-:Version: 2025.5.8
+:Version: 2025.12.12
 
 """
 
@@ -42,11 +42,12 @@ import os
 import sys
 import tempfile
 
-import netpbmfile
 import numpy
 import pytest
-from netpbmfile import NetpbmFile, imread, imwrite  # noqa
 from numpy.testing import assert_array_equal
+
+import netpbmfile
+from netpbmfile import NetpbmFile, imread, imwrite
 
 TEST_DIR = os.path.dirname(__file__)
 TEMP_DIR = os.path.join(TEST_DIR, '_tmp')
@@ -58,8 +59,8 @@ if not os.path.exists(TEMP_DIR):
 class TempFileName:
     """Temporary file name context manager."""
 
-    def __init__(self, name=None, ext='', remove=False):
-        self.remove = remove or TEMP_DIR == tempfile.gettempdir()
+    def __init__(self, name=None, ext='', *, remove=False):
+        self.remove = remove or tempfile.gettempdir() == TEMP_DIR
         if not name:
             with tempfile.NamedTemporaryFile(prefix='test_') as fh:
                 self.name = fh.named
@@ -73,7 +74,7 @@ class TempFileName:
         if self.remove:
             try:
                 os.remove(self.name)
-            except Exception:
+            except Exception:  # noqa: S110
                 pass
 
 
@@ -329,12 +330,14 @@ FILES = [
 def test_version():
     """Assert netpbmfile versions match docstrings."""
     ver = ':Version: ' + netpbmfile.__version__
+    assert __doc__ is not None
+    assert netpbmfile.__doc__ is not None
     assert ver in __doc__
     assert ver in netpbmfile.__doc__
 
 
 @pytest.mark.parametrize(
-    'name, magicnumber',
+    ('name', 'magicnumber'),
     [
         ('bilevel', 'p1'),
         ('bilevel', 'p4'),
@@ -388,9 +391,11 @@ def test_roundtrip(name, magicnumber, multi, pam):
 
 
 @pytest.mark.parametrize(
-    'fname, magicnumber, dtype, axes, shape, maxval, hash', FILES, ids=idfn
+    ('fname', 'magicnumber', 'dtype', 'axes', 'shape', 'maxval', 'md5hash'),
+    FILES,
+    ids=idfn,
 )
-def test_file(fname, magicnumber, dtype, axes, shape, maxval, hash):
+def test_file(fname, magicnumber, dtype, axes, shape, maxval, md5hash):
     """Verify files can be read and rewritten."""
     filepath = os.path.join(TEST_DIR, fname)
     if not os.path.exists(filepath):
@@ -422,7 +427,7 @@ def test_file(fname, magicnumber, dtype, axes, shape, maxval, hash):
         data = fh.asarray()
         if not multitext:
             assert data.shape == shape
-        assert md5(data) == hash
+        assert md5(data) == md5hash
 
     if magicnumber in 'PF4 Pf P7 332':
         return
