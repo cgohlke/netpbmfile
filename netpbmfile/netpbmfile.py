@@ -51,7 +51,7 @@ No gamma correction or scaling is performed.
 
 :Author: `Christoph Gohlke <https://www.cgohlke.com>`_
 :License: BSD-3-Clause
-:Version: 2025.5.8
+:Version: 2025.12.12
 
 Quickstart
 ----------
@@ -71,11 +71,15 @@ Requirements
 This revision was tested with the following requirements and dependencies
 (other versions may work):
 
-- `CPython <https://www.python.org>`_ 3.10.11, 3.11.9, 3.12.9, 3.13.2 64-bit
-- `NumPy <https://pypi.org/project/numpy/>`_ 2.2.5
+- `CPython <https://www.python.org>`_ 3.11.9, 3.12.10, 3.13.11 3.14.2 64-bit
+- `NumPy <https://pypi.org/project/numpy>`_ 2.3.5
 
 Revisions
 ---------
+
+2025.12.12
+
+- Drop support for Python 3.10, support Python 3.14.
 
 2025.5.8
 
@@ -164,9 +168,9 @@ View the image and metadata in the Netpbm file from the command line::
 
 from __future__ import annotations
 
-__version__ = '2025.5.8'
+__version__ = '2025.12.12'
 
-__all__ = ['__version__', 'imread', 'imwrite', 'imsave', 'NetpbmFile']
+__all__ = ['NetpbmFile', '__version__', 'imread', 'imsave', 'imwrite']
 
 import logging
 import math
@@ -180,7 +184,8 @@ import numpy
 
 if TYPE_CHECKING:
     from collections.abc import Iterable
-    from typing import Any, BinaryIO, Literal
+    from types import TracebackType
+    from typing import Any, BinaryIO, ClassVar, Literal, Self
 
     from numpy.typing import ArrayLike, NDArray
 
@@ -219,8 +224,7 @@ def imread(
 
     """
     with NetpbmFile(file, byteorder=byteorder) as netpbm:
-        image = netpbm.asarray()
-    return image
+        return netpbm.asarray()
 
 
 def imwrite(
@@ -328,7 +332,7 @@ class NetpbmFile:
     _data: NDArray[Any] | None
     _fh: BinaryIO | None
 
-    MAGIC_NUMBER: dict[str, str] = {
+    MAGIC_NUMBER: ClassVar[dict[str, str]] = {
         'P1': 'BLACKANDWHITE',
         'P2': 'GRAYSCALE',
         'P3': 'RGB',
@@ -371,20 +375,22 @@ class NetpbmFile:
             return
 
         if isinstance(file, (str, os.PathLike)):
-            self._fh = open(file, 'rb')
+            self._fh = open(file, 'rb')  # noqa: SIM115
             self.filename = os.fspath(file)
         else:
             self._fh = file
 
+        self._fh.seek(0)
+        data = self._fh.read(4096)
+        if (
+            len(data) < 7
+            or not data[:2].isascii()
+            or data[:2].decode('ascii') not in NetpbmFile.MAGIC_NUMBER
+        ):
+            self._fh.close()
+            raise ValueError(f'not a Netpbm file:\n  {data[:16]!r}')
+
         try:
-            self._fh.seek(0)
-            data = self._fh.read(4096)
-            if (
-                len(data) < 7
-                or not data[:2].isascii()
-                or data[:2].decode('ascii') not in NetpbmFile.MAGIC_NUMBER
-            ):
-                raise ValueError(f'not a Netpbm file:\n  {data[:16]!r}')
             if data[:2] in b'PFPf':
                 self._read_pf_header(data)
             elif data[:2] == b'PG':
@@ -430,7 +436,7 @@ class NetpbmFile:
             shape = [
                 self.height,
                 (
-                    int(math.ceil(self.width / 8))
+                    math.ceil(self.width / 8)
                     if self.magicnumber in {'P4'}
                     else self.width
                 ),
@@ -671,7 +677,7 @@ class NetpbmFile:
         if self.depth > 1:
             shape += [self.depth]
         if self.frames > 1:
-            shape = [self.frames] + shape
+            shape = [self.frames, *shape]
         return tuple(shape)
 
     @property
@@ -833,7 +839,7 @@ class NetpbmFile:
             data = numpy.array(datalist[:size], dtype).reshape(shape)
         else:
             if bilevel:
-                shape[2] = int(math.ceil(self.width / 8))
+                shape[2] = math.ceil(self.width / 8)
             size = product(shape[1:]) * dtype.itemsize
             size *= max(1, len(rawdata) // size)
             data = numpy.frombuffer(rawdata[:size], dtype).reshape(shape)
@@ -875,10 +881,7 @@ class NetpbmFile:
             )
         )
 
-        if self._data is None:
-            data = self.asarray(copy=False)
-        else:
-            data = self._data
+        data = self.asarray(copy=False) if self._data is None else self._data
 
         # data type/shape verification done in fromdata() and _header()
         if magicnumber == 'P1':
@@ -940,10 +943,7 @@ class NetpbmFile:
             comment = ''  # f'written by netpbmfile {__version__}'
         if comment:
             comment = comment.split('\n')[0].strip().encode('ascii').decode()
-        if comment:
-            comment = f'\n# {comment[:66]}\n'
-        else:
-            comment = ' '
+        comment = f'\n# {comment[:66]}\n' if comment else ' '
         if magicnumber.startswith('P7'):
             if self.maxval < 1 or self.dtype.kind not in 'bu':
                 raise ValueError(
@@ -967,7 +967,7 @@ class NetpbmFile:
                 raise ValueError(
                     f'data not compatible with {magicnumber!r} format'
                 )
-            bitdepth = int(math.ceil(math.log2(self.maxval + 1)))
+            bitdepth = math.ceil(math.log2(self.maxval + 1))
             if self.dtype.kind == 'i':
                 bitdepth += 1
             return ''.join(
@@ -975,8 +975,7 @@ class NetpbmFile:
                     'PG ',  # do not allow comments
                     'ML ' if self.byteorder == '>' else 'LM',
                     '-' if self.dtype.kind == 'i' else '',
-                    f'{bitdepth} ',
-                    f'{self.width} ' f'{self.height}\n',
+                    f'{bitdepth} {self.width} {self.height}\n',
                 )
             )
         if magicnumber in {'P1', 'P4'}:
@@ -1005,10 +1004,15 @@ class NetpbmFile:
             )
         raise ValueError(f'writing {magicnumber!r} format not supported')
 
-    def __enter__(self) -> NetpbmFile:
+    def __enter__(self) -> Self:
         return self
 
-    def __exit__(self, exc_type: Any, exc_value: Any, traceback: Any) -> None:
+    def __exit__(
+        self,
+        exc_type: type[BaseException] | None,
+        exc_value: BaseException | None,
+        traceback: TracebackType | None,
+    ) -> None:
         self.close()
 
     def __repr__(self) -> str:
@@ -1088,12 +1092,11 @@ def main(argv: list[str] | None = None) -> int:
     for fname in files:
         try:
             with NetpbmFile(fname) as pam:
-                print(pam)
+                print(pam, '\n')  # noqa: T201
                 img = pam.asarray(copy=False)
-                print()
         except ValueError as exc:
             # raise  # enable for debugging
-            print(fname, exc)
+            print(fname, exc)  # noqa: T201
             continue
 
         cmap = 'binary' if pam.maxval == 1 else 'gray'
@@ -1106,19 +1109,16 @@ def main(argv: list[str] | None = None) -> int:
         )
         if tifffile is None or not multiimage:
             if img.ndim > 3 or (img.ndim > 2 and img.shape[-1] not in {3, 4}):
-                warnings.warn('displaying first image only')
+                warnings.warn('displaying first image only', stacklevel=2)
                 img = img[0]
             if img.shape[-1] in {3, 4} and pam.maxval != 255:
-                warnings.warn('converting RGB image for display')
+                warnings.warn('converting RGB image for display', stacklevel=2)
                 maxval = float(
                     numpy.max(img)
                     if pam.maxval is None  # type: ignore[redundant-expr]
                     else pam.maxval
                 )
-                if maxval > 0.0:
-                    img = img / maxval
-                else:
-                    img = img.copy()
+                img = img / maxval if maxval > 0.0 else img.copy()
                 img *= 255
                 numpy.rint(img, out=img)
                 numpy.clip(img, 0, 255, out=img)
