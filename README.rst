@@ -24,7 +24,8 @@ No gamma correction or scaling is performed.
 
 :Author: `Christoph Gohlke <https://www.cgohlke.com>`_
 :License: BSD-3-Clause
-:Version: 2025.12.12
+:Version: 2026.1.8
+:DOI: `10.5281/zenodo.17903402 <https://doi.org/10.5281/zenodo.17903402>`_
 
 Quickstart
 ----------
@@ -44,11 +45,15 @@ Requirements
 This revision was tested with the following requirements and dependencies
 (other versions may work):
 
-- `CPython <https://www.python.org>`_ 3.11.9, 3.12.10, 3.13.11 3.14.2 64-bit
-- `NumPy <https://pypi.org/project/numpy>`_ 2.3.5
+- `CPython <https://www.python.org>`_ 3.11.9, 3.12.10, 3.13.11, 3.14.2 64-bit
+- `NumPy <https://pypi.org/project/numpy>`_ 2.4.0
 
 Revisions
 ---------
+
+2026.1.8
+
+- Improve code quality.
 
 2025.12.12
 
@@ -64,39 +69,6 @@ Revisions
 - Drop support for Python 3.9, support Python 3.13.
 
 2024.5.24
-
-- Fix docstring examples not correctly rendered on GitHub.
-
-2024.4.24
-
-- Support NumPy 2.
-
-2023.8.30
-
-- Fix linting issues.
-- Add py.typed marker.
-
-2023.6.15
-
-- Drop support for Python 3.8 and numpy < 1.21 (NEP29).
-- Improve type hints.
-
-2023.1.1
-
-- Several breaking changes:
-- Rename magicnum to magicnumber (breaking).
-- Rename tupltypes to tupltype (breaking).
-- Change magicnumber and header properties to str (breaking).
-- Replace pam parameter with magicnumber (breaking).
-- Move byteorder parameter from NetpbmFile.asarray to NetpbmFile (breaking).
-- Fix shape and axes properties for multi-image files.
-- Add maxval and tupltype parameters to NetpbmFile.fromdata and imwrite.
-- Add option to write comment to PNM and PAM files.
-- Support writing PGX and text formats.
-- Add Google style docstrings.
-- Add unittests.
-
-2022.10.25
 
 - …
 
