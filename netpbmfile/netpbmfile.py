@@ -1,6 +1,6 @@
 # netpbmfile.py
 
-# Copyright (c) 2011-2025, Christoph Gohlke
+# Copyright (c) 2011-2026, Christoph Gohlke
 # All rights reserved.
 #
 # Redistribution and use in source and binary forms, with or without
@@ -51,7 +51,8 @@ No gamma correction or scaling is performed.
 
 :Author: `Christoph Gohlke <https://www.cgohlke.com>`_
 :License: BSD-3-Clause
-:Version: 2025.12.12
+:Version: 2026.1.8
+:DOI: `10.5281/zenodo.17903402 <https://doi.org/10.5281/zenodo.17903402>`_
 
 Quickstart
 ----------
@@ -71,11 +72,15 @@ Requirements
 This revision was tested with the following requirements and dependencies
 (other versions may work):
 
-- `CPython <https://www.python.org>`_ 3.11.9, 3.12.10, 3.13.11 3.14.2 64-bit
-- `NumPy <https://pypi.org/project/numpy>`_ 2.3.5
+- `CPython <https://www.python.org>`_ 3.11.9, 3.12.10, 3.13.11, 3.14.2 64-bit
+- `NumPy <https://pypi.org/project/numpy>`_ 2.4.0
 
 Revisions
 ---------
+
+2026.1.8
+
+- Improve code quality.
 
 2025.12.12
 
@@ -91,39 +96,6 @@ Revisions
 - Drop support for Python 3.9, support Python 3.13.
 
 2024.5.24
-
-- Fix docstring examples not correctly rendered on GitHub.
-
-2024.4.24
-
-- Support NumPy 2.
-
-2023.8.30
-
-- Fix linting issues.
-- Add py.typed marker.
-
-2023.6.15
-
-- Drop support for Python 3.8 and numpy < 1.21 (NEP29).
-- Improve type hints.
-
-2023.1.1
-
-- Several breaking changes:
-- Rename magicnum to magicnumber (breaking).
-- Rename tupltypes to tupltype (breaking).
-- Change magicnumber and header properties to str (breaking).
-- Replace pam parameter with magicnumber (breaking).
-- Move byteorder parameter from NetpbmFile.asarray to NetpbmFile (breaking).
-- Fix shape and axes properties for multi-image files.
-- Add maxval and tupltype parameters to NetpbmFile.fromdata and imwrite.
-- Add option to write comment to PNM and PAM files.
-- Support writing PGX and text formats.
-- Add Google style docstrings.
-- Add unittests.
-
-2022.10.25
 
 - …
 
@@ -168,7 +140,7 @@ View the image and metadata in the Netpbm file from the command line::
 
 from __future__ import annotations
 
-__version__ = '2025.12.12'
+__version__ = '2026.1.8'
 
 __all__ = ['NetpbmFile', '__version__', 'imread', 'imsave', 'imwrite']
 
@@ -388,7 +360,8 @@ class NetpbmFile:
             or data[:2].decode('ascii') not in NetpbmFile.MAGIC_NUMBER
         ):
             self._fh.close()
-            raise ValueError(f'not a Netpbm file:\n  {data[:16]!r}')
+            msg = f'not a Netpbm file:\n  {data[:16]!r}'
+            raise ValueError(msg)
 
         try:
             if data[:2] in b'PFPf':
@@ -402,9 +375,8 @@ class NetpbmFile:
                     try:
                         self._read_pnm_header(data)
                     except Exception as exc:
-                        raise ValueError(
-                            f'not a Netpbm file:\n{data[:16]!r}'
-                        ) from exc
+                        msg = f'not a Netpbm file:\n{data[:16]!r}'
+                        raise ValueError(msg) from exc
         except Exception:
             self._fh.close()
             raise
@@ -425,7 +397,8 @@ class NetpbmFile:
         elif self.maxval < 2**32:
             dtype = self.byteorder + 'u4'
         else:
-            raise ValueError(f'{self.maxval=} out of range')
+            msg = f'{self.maxval=} out of range'
+            raise ValueError(msg)
 
         self.dtype = numpy.dtype(dtype)
 
@@ -476,16 +449,16 @@ class NetpbmFile:
         data = numpy.array(data, ndmin=2, copy=True)
         if data.dtype.kind not in 'uib':
             # TODO: support PF, Pf, PF4
-            raise ValueError(f'dtype {data.dtype!r} not supported')
+            msg = f'dtype {data.dtype!r} not supported'
+            raise ValueError(msg)
 
         issigned = data.dtype.kind == 'i' and numpy.min(data) < 0
         if issigned:
             if magicnumber is None:
                 magicnumber = 'PG'
             elif magicnumber != 'PG':
-                raise ValueError(
-                    f'invalid {data.dtype=!r} for {magicnumber=!r}'
-                )
+                msg = f'invalid {data.dtype=!r} for {magicnumber=!r}'
+                raise ValueError(msg)
 
         if maxval is None:
             if issigned:
@@ -500,7 +473,8 @@ class NetpbmFile:
                 )
         if not 0 < maxval < 2**32:
             # allow maxval > 65535
-            raise ValueError(f'{maxval=} of range')
+            msg = f'{maxval=} of range'
+            raise ValueError(msg)
 
         self = cls(None)
 
@@ -530,21 +504,24 @@ class NetpbmFile:
         elif magicnumber in {'P3', 'P6'}:
             # rgb
             if data.ndim < 3 or data.shape[-1] != 3:
-                raise ValueError(f'invalid {magicnumber=!r} for {data.shape=}')
+                msg = f'invalid {magicnumber=!r} for {data.shape=}'
+                raise ValueError(msg)
             self.depth = data.shape[-1]
             self.width = data.shape[-2]
             self.height = data.shape[-3]
         elif magicnumber in {'P1', 'P2', 'P4', 'P5', 'PG'}:
             # bilevel or gray
             if magicnumber in {'P1', 'P4'} and maxval != 1:
-                raise ValueError(f'invalid {magicnumber=!r} for {maxval=}')
+                msg = f'invalid {magicnumber=!r} for {maxval=}'
+                raise ValueError(msg)
             if magicnumber == 'PG':
                 cls.byteorder = '<' if data.dtype.byteorder in '<|=' else '>'
             self.depth = 1
             self.width = data.shape[-1]
             self.height = data.shape[-2]
         else:
-            raise ValueError(f'invalid {magicnumber=}')
+            msg = f'invalid {magicnumber=}'
+            raise ValueError(msg)
 
         if magicnumber == 'PG' and data.dtype.kind == 'i':
             self._data = data.astype(
@@ -699,7 +676,8 @@ class NetpbmFile:
             data,
         )
         if match is None:
-            raise ValueError('invalid PAM header')
+            msg = 'invalid PAM header'
+            raise ValueError(msg)
         regroups = match.groups()
         self.dataoffset = len(regroups[0])
         self.header = regroups[0].decode(errors='ignore')
@@ -729,7 +707,8 @@ class NetpbmFile:
             data,
         )
         if match is None:
-            raise ValueError('invalid PNM header')
+            msg = 'invalid PNM header'
+            raise ValueError(msg)
         regroups = match.groups()
         regroups = regroups + (1,) * bpm
         self.dataoffset = len(regroups[0])
@@ -755,7 +734,8 @@ class NetpbmFile:
             data,
         )
         if match is None:
-            raise ValueError('invalid PF header')
+            msg = 'invalid PF header'
+            raise ValueError(msg)
         regroups = match.groups()
         self.dataoffset = len(regroups[0])
         self.header = regroups[0].decode(errors='ignore')
@@ -771,7 +751,8 @@ class NetpbmFile:
         elif self.magicnumber == 'Pf':
             self.depth = 1
         else:
-            raise ValueError(f'invalid {self.magicnumber=!r}')
+            msg = f'invalid {self.magicnumber=!r}'
+            raise ValueError(msg)
 
     def _read_pg_header(self, data: bytes, /) -> None:
         """Read PG header and initialize instance."""
@@ -784,7 +765,8 @@ class NetpbmFile:
             data,
         )
         if match is None:
-            raise ValueError('invalid PG header')
+            msg = 'invalid PG header'
+            raise ValueError(msg)
         regroups = match.groups()
         self.dataoffset = len(regroups[0])
         self.header = regroups[0].decode(errors='ignore')
@@ -807,7 +789,8 @@ class NetpbmFile:
                 self.byteorder + ('i4' if signed else 'u4')
             )
         else:
-            raise ValueError(f'{bitdepth=} out of range')
+            msg = f'{bitdepth=} out of range'
+            raise ValueError(msg)
 
     def _read_data(self, fh: BinaryIO) -> NDArray[Any]:
         """Return image data from open file."""
@@ -872,7 +855,8 @@ class NetpbmFile:
         if magicnumber is None:
             magicnumber = self.magicnumber
         if magicnumber not in NetpbmFile.MAGIC_NUMBER:
-            raise ValueError(f'invalid {magicnumber=!r}')
+            msg = f'invalid {magicnumber=!r}'
+            raise ValueError(msg)
 
         fh.seek(0)
         fh.write(
@@ -946,9 +930,8 @@ class NetpbmFile:
         comment = f'\n# {comment[:66]}\n' if comment else ' '
         if magicnumber.startswith('P7'):
             if self.maxval < 1 or self.dtype.kind not in 'bu':
-                raise ValueError(
-                    f'data not compatible with {magicnumber!r} format'
-                )
+                msg = f'data not compatible with {magicnumber!r} format'
+                raise ValueError(msg)
             return '\n'.join(
                 (
                     f'P7{comment[:-1]}',
@@ -964,9 +947,8 @@ class NetpbmFile:
             )
         if magicnumber == 'PG':
             if self.dtype.kind not in 'iu':
-                raise ValueError(
-                    f'data not compatible with {magicnumber!r} format'
-                )
+                msg = f'data not compatible with {magicnumber!r} format'
+                raise ValueError(msg)
             bitdepth = math.ceil(math.log2(self.maxval + 1))
             if self.dtype.kind == 'i':
                 bitdepth += 1
@@ -980,29 +962,27 @@ class NetpbmFile:
             )
         if magicnumber in {'P1', 'P4'}:
             if self.maxval != 1 or self.depth != 1 or self.dtype.kind != 'b':
-                raise ValueError(
-                    f'data not compatible with {magicnumber!r} format'
-                )
+                msg = f'data not compatible with {magicnumber!r} format'
+                raise ValueError(msg)
             return f'{magicnumber}{comment}{self.width} {self.height}\n'
         if magicnumber in {'P2', 'P5'}:
             if self.depth != 1 or self.dtype.kind not in 'ui':
-                raise ValueError(
-                    f'data not compatible with {magicnumber!r} format'
-                )
+                msg = f'data not compatible with {magicnumber!r} format'
+                raise ValueError(msg)
             return (
                 f'{magicnumber}{comment}'
                 f'{self.width} {self.height} {self.maxval}\n'
             )
         if magicnumber in {'P3', 'P6'}:
             if self.depth != 3 or self.dtype.kind not in 'ui':
-                raise ValueError(
-                    f'data not compatible with {magicnumber!r} format'
-                )
+                msg = f'data not compatible with {magicnumber!r} format'
+                raise ValueError(msg)
             return (
                 f'{magicnumber}{comment}'
                 f'{self.width} {self.height} {self.maxval}\n'
             )
-        raise ValueError(f'writing {magicnumber!r} format not supported')
+        msg = f'writing {magicnumber!r} format not supported'
+        raise ValueError(msg)
 
     def __enter__(self) -> Self:
         return self
@@ -1041,10 +1021,14 @@ class NetpbmFile:
 
 
 def product(iterable: Iterable[int], /) -> int:
-    """Return product of sequence of numbers."""
+    """Return product of integers.
+
+    Like math.prod, but does not overflow with numpy arrays.
+
+    """
     prod = 1
     for i in iterable:
-        prod *= i
+        prod *= int(i)
     return prod
 
 
