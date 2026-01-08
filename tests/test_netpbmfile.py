@@ -1,6 +1,6 @@
 # test_netpbmfile.py
 
-# Copyright (c) 2011-2025, Christoph Gohlke
+# Copyright (c) 2011-2026, Christoph Gohlke
 # All rights reserved.
 #
 # Redistribution and use in source and binary forms, with or without
@@ -27,12 +27,9 @@
 # ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE
 # POSSIBILITY OF SUCH DAMAGE.
 
-# mypy: allow-untyped-defs
-# mypy: check-untyped-defs=False
-
 """Unittests for the netpbmfile package.
 
-:Version: 2025.12.12
+:Version: 2026.1.8
 
 """
 
@@ -559,3 +556,6 @@ if __name__ == '__main__':
     argv.append('--cov=netpbmfile')
     argv.append('--verbose')
     sys.exit(pytest.main(argv))
+
+# mypy: allow-untyped-defs
+# mypy: check-untyped-defs=False
