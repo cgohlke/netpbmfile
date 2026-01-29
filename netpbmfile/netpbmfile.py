@@ -38,7 +38,7 @@ or related formats:
 - PGM (Portable Gray Map): P2 (text) and P5 (binary)
 - PPM (Portable Pixel Map): P3 (text) and P6 (binary)
 - PNM (Portable Any Map): shorthand for PBM, PGM, and PPM collectively
-- PAM (Portable Arbitrary Map): P7, bilevel, gray, and rgb
+- PAM (Portable Arbitrary Map): P7, bilevel, gray, rgb, and arbitrary depths
 - PGX (Portable Graymap Signed): PG, signed grayscale
 - PFM (Portable Float Map): Pf (gray), PF (rgb), and PF4 (rgba), read-only
 - XV thumbnail: P7 332 (rgb332), read-only
@@ -51,7 +51,7 @@ No gamma correction or scaling is performed.
 
 :Author: `Christoph Gohlke <https://www.cgohlke.com>`_
 :License: BSD-3-Clause
-:Version: 2026.1.8
+:Version: 2026.1.29
 :DOI: `10.5281/zenodo.17903402 <https://doi.org/10.5281/zenodo.17903402>`_
 
 Quickstart
@@ -73,10 +73,14 @@ This revision was tested with the following requirements and dependencies
 (other versions may work):
 
 - `CPython <https://www.python.org>`_ 3.11.9, 3.12.10, 3.13.11, 3.14.2 64-bit
-- `NumPy <https://pypi.org/project/numpy>`_ 2.4.0
+- `NumPy <https://pypi.org/project/numpy>`_ 2.4.1
 
 Revisions
 ---------
+
+2026.1.29
+
+- Fix code review issues.
 
 2026.1.8
 
@@ -140,7 +144,7 @@ View the image and metadata in the Netpbm file from the command line::
 
 from __future__ import annotations
 
-__version__ = '2026.1.8'
+__version__ = '2026.1.29'
 
 __all__ = ['NetpbmFile', '__version__', 'imread', 'imsave', 'imwrite']
 
@@ -255,9 +259,10 @@ class NetpbmFile:
     Parameters:
         file:
             Name of file or open binary file to read.
+            None creates an empty instance.
         byteorder:
             Byte order of image data in file.
-            By default, all formats are big endian except for PFM, which
+            By default, all formats are big-endian except for PFM, which
             encodes the byte order in the file header.
 
     """
@@ -278,13 +283,13 @@ class NetpbmFile:
     """Number of columns in image."""
 
     depth: int
-    """Number of samples in image."""
+    """Number of samples per pixel."""
 
     maxval: int
     """Maximum value of image samples."""
 
     scale: float
-    """Factor to scale image values in PFM formats."""
+    """Factor to scale image values in PFM formats, else zero."""
 
     byteorder: ByteOrder
     """Byte order of binary image data."""
@@ -359,7 +364,8 @@ class NetpbmFile:
             or not data[:2].isascii()
             or data[:2].decode('ascii') not in NetpbmFile.MAGIC_NUMBER
         ):
-            self._fh.close()
+            if self.filename:
+                self._fh.close()
             msg = f'not a Netpbm file:\n  {data[:16]!r}'
             raise ValueError(msg)
 
@@ -416,7 +422,8 @@ class NetpbmFile:
                 self.depth,
                 self.dtype.itemsize,
             ]
-            self.frames = max(1, bytecount // product(shape))
+            prod = product(shape)
+            self.frames = max(1, bytecount // prod) if prod > 0 else 1
 
     @classmethod
     def fromdata(
@@ -465,7 +472,9 @@ class NetpbmFile:
                 maxval = int(numpy.max(numpy.abs(data)))
             else:
                 maxval = int(numpy.max(data))
-            if maxval == 1:
+            if maxval == 0 and not issigned:
+                maxval = 1  # treat all-zero unsigned arrays as binary
+            elif maxval == 1:
                 maxval = 1
             else:
                 maxval = max(
@@ -473,7 +482,7 @@ class NetpbmFile:
                 )
         if not 0 < maxval < 2**32:
             # allow maxval > 65535
-            msg = f'{maxval=} of range'
+            msg = f'{maxval=} out of range'
             raise ValueError(msg)
 
         self = cls(None)
@@ -515,7 +524,7 @@ class NetpbmFile:
                 msg = f'invalid {magicnumber=!r} for {maxval=}'
                 raise ValueError(msg)
             if magicnumber == 'PG':
-                cls.byteorder = '<' if data.dtype.byteorder in '<|=' else '>'
+                self.byteorder = '<' if data.dtype.byteorder in '<=' else '>'
             self.depth = 1
             self.width = data.shape[-1]
             self.height = data.shape[-2]
@@ -529,9 +538,9 @@ class NetpbmFile:
                     'i1'
                     if maxval < 128
                     else (
-                        cls.byteorder + 'i2'
+                        self.byteorder + 'i2'
                         if maxval < 32768
-                        else cls.byteorder + 'i4'
+                        else self.byteorder + 'i4'
                     )
                 ),
                 copy=False,
@@ -544,17 +553,16 @@ class NetpbmFile:
                 copy=False,
             )
 
-        self.frames = max(
-            1, product(data.shape) // (self.height * self.width * self.depth)
+        frame_size = self.height * self.width * self.depth
+        self.frames = (
+            max(1, product(data.shape) // frame_size) if frame_size > 0 else 1
         )
-        assert magicnumber is not None
         self.magicnumber = magicnumber
         self.maxval = maxval
         self.dtype = self._data.dtype
         self.header = self._header()
 
         if tupltype is not None:
-            assert tupltype is not None
             self.tupltype = tupltype
         elif magicnumber != 'P7':
             self.tupltype = NetpbmFile.MAGIC_NUMBER[self.magicnumber]
@@ -633,7 +641,7 @@ class NetpbmFile:
                     comment=comment,
                 )
         else:
-            assert hasattr(file, 'seek')
+            # assert hasattr(file, 'seek')
             self._tofile(
                 file,
                 magicnumber=magicnumber,
@@ -683,6 +691,8 @@ class NetpbmFile:
         self.header = regroups[0].decode(errors='ignore')
         self.magicnumber = 'P7'
         for group in regroups[1:]:
+            if group is None:
+                continue
             key, value = group.split()
             setattr(self, key.decode('ascii').lower(), int(value))
         matches = re.findall(r'(TUPLTYPE\s+\w+)', self.header)
@@ -717,14 +727,12 @@ class NetpbmFile:
         self.width = int(regroups[2])
         self.height = int(regroups[3])
         self.maxval = int(regroups[4])
-        self.depth = (
-            3 if self.magicnumber in {'P3', 'P6', 'P7', 'P7 332'} else 1
-        )
+        self.depth = 3 if self.magicnumber in {'P3', 'P6', 'P7 332'} else 1
         self.tupltype = NetpbmFile.MAGIC_NUMBER[self.magicnumber]
 
     def _read_pf_header(self, data: bytes, /) -> None:
         """Read PF header and initialize instance."""
-        # there are no comments in these files
+        # there are no comments in these files, but allow anyway
         match = re.search(
             br'(^(PF|PF4|Pf)\s+(?:#.*[\r\n])*'
             br'\s*(\d+)\s+(?:#.*[\r\n])*'
@@ -761,7 +769,7 @@ class NetpbmFile:
             br'(LM|ML)?[ ]*'
             br'([-+])?[ ]*([0-9]+)[ ]+'
             br'([0-9]+)[ ]+'
-            br'([0-9]+)[ ]*[\r?\n])',
+            br'([0-9]+)[ ]*[\r\n])',
             data,
         )
         if match is None:
@@ -803,7 +811,8 @@ class NetpbmFile:
         rawdata = fh.read()
 
         if self.magicnumber in {'P1', 'P2', 'P3'}:
-            if bilevel and rawdata.strip()[1:2] in b'01':
+            stripped = rawdata.strip()
+            if bilevel and stripped[1:2] and stripped[1:2] in b'01':
                 datalist = [
                     bytes([i])
                     for line in rawdata.splitlines()
@@ -878,7 +887,7 @@ class NetpbmFile:
             numpy.savetxt(fh, data.reshape(-1), fmt='%i')
         elif magicnumber == 'P2':
             if self.maxval > 65535:
-                logger().warning('writing non-compliant maxval {self.maxval}')
+                logger().warning(f'writing non-compliant maxval {self.maxval}')
             if self.frames > 1:
                 logger().warning('writing non-compliant multi-image file')
             assert self.depth == 1
@@ -887,7 +896,7 @@ class NetpbmFile:
             numpy.savetxt(fh, data.reshape(-1), fmt='%i')
         elif magicnumber == 'P3':
             if self.maxval > 65535:
-                logger().warning('writing non-compliant maxval {self.maxval}')
+                logger().warning(f'writing non-compliant maxval {self.maxval}')
             if self.frames > 1:
                 logger().warning('writing non-compliant multi-image file')
             assert self.depth == 3
@@ -926,7 +935,12 @@ class NetpbmFile:
         if comment is None:
             comment = ''  # f'written by netpbmfile {__version__}'
         if comment:
-            comment = comment.split('\n')[0].strip().encode('ascii').decode()
+            comment = (
+                comment.split('\n')[0]
+                .strip()
+                .encode('ascii', errors='replace')
+                .decode()
+            )
         comment = f'\n# {comment[:66]}\n' if comment else ' '
         if magicnumber.startswith('P7'):
             if self.maxval < 1 or self.dtype.kind not in 'bu':
@@ -955,7 +969,7 @@ class NetpbmFile:
             return ''.join(
                 (
                     'PG ',  # do not allow comments
-                    'ML ' if self.byteorder == '>' else 'LM',
+                    'ML ' if self.byteorder == '>' else 'LM ',
                     '-' if self.dtype.kind == 'i' else '',
                     f'{bitdepth} {self.width} {self.height}\n',
                 )
@@ -1048,7 +1062,7 @@ def logger() -> logging.Logger:
 def main(argv: list[str] | None = None) -> int:
     """Command line usage main function.
 
-    Show images specified on command line or all images in  directory.
+    Show images specified on command line or all images in directory.
 
     """
     from glob import glob
@@ -1073,20 +1087,22 @@ def main(argv: list[str] | None = None) -> int:
     else:
         files = argv[1:]
 
-    for fname in files:
+    for filename in files:
         try:
-            with NetpbmFile(fname) as pam:
+            with NetpbmFile(filename) as pam:
                 print(pam, '\n')  # noqa: T201
                 img = pam.asarray(copy=False)
         except ValueError as exc:
             # raise  # enable for debugging
-            print(fname, exc)  # noqa: T201
+            print(filename, exc)  # noqa: T201
             continue
 
         cmap = 'binary' if pam.maxval == 1 else 'gray'
         dtype = img.dtype
         shape = img.shape
-        title = f'{os.path.split(fname)[-1]} {pam.magicnumber} {shape} {dtype}'
+        title = (
+            f'{os.path.split(filename)[-1]} {pam.magicnumber} {shape} {dtype}'
+        )
 
         multiimage = img.ndim > 3 or (
             img.ndim > 2 and img.shape[-1] not in {3, 4}
