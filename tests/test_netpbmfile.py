@@ -29,7 +29,7 @@
 
 """Unittests for the netpbmfile package.
 
-:Version: 2026.1.8
+:Version: 2026.1.29
 
 """
 
@@ -361,8 +361,8 @@ def test_roundtrip(name, magicnumber, multi, pam):
             data = data.astype('u1')
     else:
         ext = 'pnm'
-    fname = f'{name}{"x4" if multi else ""}.{magicnumber}.{ext}'
-    with TempFileName(fname) as temp:
+    filename = f'{name}{"x4" if multi else ""}.{magicnumber}.{ext}'
+    with TempFileName(filename) as temp:
         magicnumber = magicnumber.upper()
         if not multi:
             data = data[0]
@@ -379,7 +379,7 @@ def test_roundtrip(name, magicnumber, multi, pam):
             if magicnumber not in 'P4 P5 P6':
                 return
             # export PNM as PAM
-            with TempFileName(fname + '.pam') as fn:
+            with TempFileName(filename + '.pam') as fn:
                 fh.write(fn, magicnumber='P7', comment=comment)
                 with NetpbmFile(fn) as fh2:
                     assert fh2.magicnumber == 'P7'
@@ -388,15 +388,15 @@ def test_roundtrip(name, magicnumber, multi, pam):
 
 
 @pytest.mark.parametrize(
-    ('fname', 'magicnumber', 'dtype', 'axes', 'shape', 'maxval', 'md5hash'),
+    ('filename', 'magicnumber', 'dtype', 'axes', 'shape', 'maxval', 'md5hash'),
     FILES,
     ids=idfn,
 )
-def test_file(fname, magicnumber, dtype, axes, shape, maxval, md5hash):
+def test_file(filename, magicnumber, dtype, axes, shape, maxval, md5hash):
     """Verify files can be read and rewritten."""
-    filepath = os.path.join(TEST_DIR, fname)
+    filepath = os.path.join(TEST_DIR, filename)
     if not os.path.exists(filepath):
-        pytest.skip(f'{fname} not found')
+        pytest.skip(f'{filename} not found')
 
     byteorder = '<' if dtype[:2] == '<u' else None
     multitext = magicnumber in 'P1 P2 P3' and axes[0] == 'I'
@@ -430,7 +430,7 @@ def test_file(fname, magicnumber, dtype, axes, shape, maxval, md5hash):
         return
 
     # rewrite
-    with TempFileName(fname) as temp:
+    with TempFileName(filename) as temp:
         imwrite(
             temp,
             data,
@@ -486,7 +486,7 @@ def test_file(fname, magicnumber, dtype, axes, shape, maxval, md5hash):
 
     # rewrite as P7
     magicnumber = 'P7'
-    with TempFileName(fname + '.pam') as temp:
+    with TempFileName(filename + '.pam') as temp:
         imwrite(
             temp,
             data,
@@ -540,9 +540,9 @@ def test_lfdfiles():
     except ImportError as exc:
         pytest.skip(exc.msg)
 
-    fname = os.path.join(TEST_DIR, 'P4_multi.pbm')
-    data = imread(fname)
-    with LfdFile(fname) as lfd:
+    filename = os.path.join(TEST_DIR, 'P4_multi.pbm')
+    data = imread(filename)
+    with LfdFile(filename) as lfd:
         assert_array_equal(data, lfd.asarray())
 
 
