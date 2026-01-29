@@ -11,7 +11,7 @@ or related formats:
 - PGM (Portable Gray Map): P2 (text) and P5 (binary)
 - PPM (Portable Pixel Map): P3 (text) and P6 (binary)
 - PNM (Portable Any Map): shorthand for PBM, PGM, and PPM collectively
-- PAM (Portable Arbitrary Map): P7, bilevel, gray, and rgb
+- PAM (Portable Arbitrary Map): P7, bilevel, gray, rgb, and arbitrary depths
 - PGX (Portable Graymap Signed): PG, signed grayscale
 - PFM (Portable Float Map): Pf (gray), PF (rgb), and PF4 (rgba), read-only
 - XV thumbnail: P7 332 (rgb332), read-only
@@ -24,7 +24,7 @@ No gamma correction or scaling is performed.
 
 :Author: `Christoph Gohlke <https://www.cgohlke.com>`_
 :License: BSD-3-Clause
-:Version: 2026.1.8
+:Version: 2026.1.29
 :DOI: `10.5281/zenodo.17903402 <https://doi.org/10.5281/zenodo.17903402>`_
 
 Quickstart
@@ -46,10 +46,14 @@ This revision was tested with the following requirements and dependencies
 (other versions may work):
 
 - `CPython <https://www.python.org>`_ 3.11.9, 3.12.10, 3.13.11, 3.14.2 64-bit
-- `NumPy <https://pypi.org/project/numpy>`_ 2.4.0
+- `NumPy <https://pypi.org/project/numpy>`_ 2.4.1
 
 Revisions
 ---------
+
+2026.1.29
+
+- Fix code review issues.
 
 2026.1.8
 
