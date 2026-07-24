@@ -7,8 +7,6 @@ import sys
 
 from setuptools import setup
 
-buildnumber = ''
-
 
 def search(pattern: str, string: str, flags: int = 0) -> str:
     """Return first match of pattern in string."""
@@ -41,7 +39,6 @@ with open('netpbmfile/netpbmfile.py', encoding='utf-8') as fh:
     code = fh.read().replace('\r\n', '\n').replace('\r', '\n')
 
 version = search(r"__version__ = '(.*?)'", code).replace('.x.x', '.dev0')
-version += ('.' + buildnumber) if buildnumber else ''
 
 description = search(r'"""(.*)\.(?:\r\n|\r|\n)', code)
 
@@ -100,15 +97,15 @@ setup(
     project_urls={
         'Bug Tracker': 'https://github.com/cgohlke/netpbmfile/issues',
         'Source Code': 'https://github.com/cgohlke/netpbmfile',
-        # 'Documentation': 'https://',
+        'Documentation': 'https://www.cgohlke.com/docs/netpbmfile',
     },
     packages=['netpbmfile'],
     package_data={'netpbmfile': ['py.typed']},
     entry_points={
         'console_scripts': ['netpbmfile = netpbmfile.netpbmfile:main']
     },
-    python_requires='>=3.11',
-    install_requires=['numpy'],
+    python_requires='>=3.12',
+    install_requires=['numpy>=2.1'],
     extras_require={'all': ['tifffile', 'matplotlib']},
     platforms=['any'],
     classifiers=[
@@ -117,9 +114,9 @@ setup(
         'Intended Audience :: Developers',
         'Operating System :: OS Independent',
         'Programming Language :: Python :: 3 :: Only',
-        'Programming Language :: Python :: 3.11',
         'Programming Language :: Python :: 3.12',
         'Programming Language :: Python :: 3.13',
         'Programming Language :: Python :: 3.14',
+        'Programming Language :: Python :: 3.15',
     ],
 )
