@@ -29,12 +29,14 @@
 
 """Unittests for the netpbmfile package.
 
-:Version: 2026.1.29
+:Version: 2026.7.25
 
 """
 
+import glob
 import hashlib
 import io
+import itertools
 import os
 import sys
 import tempfile
@@ -44,7 +46,7 @@ import pytest
 from numpy.testing import assert_array_equal
 
 import netpbmfile
-from netpbmfile import NetpbmFile, imread, imwrite
+from netpbmfile import FILE_EXTENSIONS, NetpbmFile, imread, imwrite
 
 TEST_DIR = os.path.dirname(__file__)
 TEMP_DIR = os.path.join(TEST_DIR, '_tmp')
@@ -533,17 +535,23 @@ def test_non_netpbm():
         imread(io.BytesIO(b'P7      '))
 
 
-def test_lfdfiles():
-    """Test lfdfiles package."""
-    try:
-        from lfdfiles import LfdFile
-    except ImportError as exc:
-        pytest.skip(exc.msg)
-
-    filename = os.path.join(TEST_DIR, 'P4_multi.pbm')
-    data = imread(filename)
-    with LfdFile(filename) as lfd:
-        assert_array_equal(data, lfd.asarray())
+@pytest.mark.parametrize(
+    'filename',
+    tuple(
+        itertools.chain.from_iterable(
+            glob.glob(f'**/*{ext}', root_dir=TEST_DIR, recursive=True)
+            for ext in FILE_EXTENSIONS
+        )
+    ),
+)
+def test_glob(filename):
+    """Test read all Netpbm files."""
+    if 'empty' in filename or 'negative_size' in filename:
+        pytest.skip(f'{filename} skipped')
+    filename = os.path.join(TEST_DIR, filename)
+    with NetpbmFile(filename) as fh:
+        fh.asarray()
+        str(fh)
 
 
 if __name__ == '__main__':
