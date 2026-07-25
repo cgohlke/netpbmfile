@@ -51,7 +51,7 @@ No gamma correction or scaling is performed.
 
 :Author: `Christoph Gohlke <https://www.cgohlke.com>`_
 :License: BSD-3-Clause
-:Version: 2026.1.29
+:Version: 2026.7.25
 :DOI: `10.5281/zenodo.17903402 <https://doi.org/10.5281/zenodo.17903402>`_
 
 Quickstart
@@ -72,11 +72,15 @@ Requirements
 This revision was tested with the following requirements and dependencies
 (other versions may work):
 
-- `CPython <https://www.python.org>`_ 3.11.9, 3.12.10, 3.13.11, 3.14.2 64-bit
-- `NumPy <https://pypi.org/project/numpy>`_ 2.4.1
+- `CPython <https://www.python.org>`_ 3.12.10, 3.13.14, 3.14.6, 3.15.0b4 64-bit
+- `Numpy <https://pypi.org/project/numpy>`_ 2.5.1
 
 Revisions
 ---------
+
+2026.7.25
+
+- Drop support for Python 3.11 and numpy 2.0 (SPEC0), support Python 3.15.
 
 2026.1.29
 
@@ -144,9 +148,16 @@ View the image and metadata in the Netpbm file from the command line::
 
 from __future__ import annotations
 
-__version__ = '2026.1.29'
+__version__ = '2026.7.25'
 
-__all__ = ['NetpbmFile', '__version__', 'imread', 'imsave', 'imwrite']
+__all__ = [
+    'FILE_EXTENSIONS',
+    'NetpbmFile',
+    '__version__',
+    'imread',
+    'imsave',
+    'imwrite',
+]
 
 import logging
 import math
@@ -390,11 +401,13 @@ class NetpbmFile:
         if byteorder is not None:
             self.byteorder = byteorder
 
-        if self.magicnumber in {'P1', 'P4'}:
+        magicnumber: MagicNumber = self.magicnumber
+
+        if magicnumber in {'P1', 'P4'}:
             dtype = 'bool_'
-        elif self.magicnumber in {'PF', 'PF4', 'Pf'}:
+        elif magicnumber in {'PF', 'PF4', 'Pf'}:
             dtype = self.byteorder + 'f4'
-        elif self.magicnumber in {'PG'}:
+        elif magicnumber in {'PG'}:  # noqa: FURB171
             dtype = self.byteorder + self.dtype.char
         elif self.maxval < 256:
             dtype = 'u1'
@@ -408,7 +421,7 @@ class NetpbmFile:
 
         self.dtype = numpy.dtype(dtype)
 
-        if self.magicnumber in {'P1', 'P2', 'P3'}:
+        if magicnumber in {'P1', 'P2', 'P3'}:
             self.frames = 1
         else:
             bytecount = self._fh.seek(0, 2) - len(self.header)
@@ -416,7 +429,7 @@ class NetpbmFile:
                 self.height,
                 (
                     math.ceil(self.width / 8)
-                    if self.magicnumber in {'P4'}
+                    if magicnumber in {'P4'}  # noqa: FURB171
                     else self.width
                 ),
                 self.depth,
@@ -1057,6 +1070,19 @@ def indent(*args: Any) -> str:
 def logger() -> logging.Logger:
     """Return logger for netpbmfile module."""
     return logging.getLogger('netpbmfile')
+
+
+FILE_EXTENSIONS = {
+    '.pbm': 'Portable Bit Map',
+    '.pgm': 'Portable Gray Map',
+    '.ppm': 'Portable Pixel Map',
+    '.pnm': 'Portable Any Map',
+    '.pam': 'Portable Arbitrary Map',
+    '.pgx': 'Portable Graymap Signed',
+    '.pfm': 'Portable Float Map)',
+    '.xv': 'XV thumbnail',
+}
+"""File extensions of Netpbm files."""
 
 
 def main(argv: list[str] | None = None) -> int:
