@@ -24,7 +24,7 @@ No gamma correction or scaling is performed.
 
 :Author: `Christoph Gohlke <https://www.cgohlke.com>`_
 :License: BSD-3-Clause
-:Version: 2026.1.29
+:Version: 2026.7.25
 :DOI: `10.5281/zenodo.17903402 <https://doi.org/10.5281/zenodo.17903402>`_
 
 Quickstart
@@ -45,11 +45,15 @@ Requirements
 This revision was tested with the following requirements and dependencies
 (other versions may work):
 
-- `CPython <https://www.python.org>`_ 3.11.9, 3.12.10, 3.13.11, 3.14.2 64-bit
-- `NumPy <https://pypi.org/project/numpy>`_ 2.4.1
+- `CPython <https://www.python.org>`_ 3.12.10, 3.13.14, 3.14.6, 3.15.0b4 64-bit
+- `Numpy <https://pypi.org/project/numpy>`_ 2.5.1
 
 Revisions
 ---------
+
+2026.7.25
+
+- Drop support for Python 3.11 and numpy 2.0 (SPEC0), support Python 3.15.
 
 2026.1.29
 
