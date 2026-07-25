@@ -6,14 +6,19 @@ include pyproject.toml
 include netpbmfile/py.typed
 
 exclude .env
+exclude .gitignore
 exclude *.cmd
 exclude *.yaml
+exclude *.code-workspace
 exclude mypy.ini
 exclude ruff.toml
+exclude typos.toml
+recursive-exclude .vscode *
 recursive-exclude doc *
 recursive-exclude docs *
 recursive-exclude test *
 recursive-exclude tests *
+recursive-exclude examples *
 
 recursive-exclude * __pycache__
 recursive-exclude * *.py[co]
