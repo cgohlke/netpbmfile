@@ -1,6 +1,10 @@
 Revisions
 ---------
 
+2026.7.25
+
+- Drop support for Python 3.11 and numpy 2.0 (SPEC0), support Python 3.15.
+
 2026.1.29
 
 - Fix code review issues.
