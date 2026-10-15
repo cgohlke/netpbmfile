@@ -51,7 +51,7 @@ No gamma correction or scaling is performed.
 
 :Author: `Christoph Gohlke <https://www.cgohlke.com>`_
 :License: BSD-3-Clause
-:Version: 2026.7.25
+:Version: 2026.10.15
 :DOI: `10.5281/zenodo.17903402 <https://doi.org/10.5281/zenodo.17903402>`_
 
 Quickstart
@@ -62,7 +62,8 @@ Install the netpbmfile package and all dependencies from the
 
     python -m pip install -U "netpbmfile[all]"
 
-See `Examples`_ for using the programming interface.
+See `Examples`_ and `Documentation <https://www.cgohlke.com/docs/netpbmfile/>`_
+for using the programming interface.
 
 Source code and support are available on
 `GitHub <https://github.com/cgohlke/netpbmfile>`_.
@@ -72,11 +73,18 @@ Requirements
 This revision was tested with the following requirements and dependencies
 (other versions may work):
 
-- `CPython <https://www.python.org>`_ 3.12.10, 3.13.14, 3.14.6, 3.15.0b4 64-bit
-- `Numpy <https://pypi.org/project/numpy>`_ 2.5.1
+- `CPython <https://www.python.org>`_ 3.12.10, 3.13.16, 3.14.8, 3.15.0 64-bit
+- `Numpy <https://pypi.org/project/numpy>`_ 2.5.4
 
 Revisions
 ---------
+
+2026.10.15
+
+- Fix silent truncation of samples not fitting dtype of maxval.
+- Write to open files at current position (breaking).
+- Do not close caller-owned file handle on parsing error.
+- Raise when writing XV format instead of writing PAM (breaking).
 
 2026.7.25
 
@@ -84,33 +92,16 @@ Revisions
 
 2026.1.29
 
-- Fix code review issues.
-
-2026.1.8
-
-- Improve code quality.
-
-2025.12.12
-
-- Drop support for Python 3.10, support Python 3.14.
-
-2025.5.8
-
-- Remove doctest command line option.
-
-2025.1.1
-
-- Improve type hints.
-- Drop support for Python 3.9, support Python 3.13.
-
-2024.5.24
-
 - …
 
 Refer to the CHANGES file for older revisions.
 
 Examples
 --------
+
+Import functions and classes used in these examples:
+
+>>> from netpbmfile import NetpbmFile, imread, imwrite
 
 Write a numpy array to a Netpbm file in grayscale binary format:
 
@@ -148,7 +139,7 @@ View the image and metadata in the Netpbm file from the command line::
 
 from __future__ import annotations
 
-__version__ = '2026.7.25'
+__version__ = '2026.10.15'
 
 __all__ = [
     'FILE_EXTENSIONS',
@@ -230,6 +221,7 @@ def imwrite(
     Parameters:
         file:
             Name of file or open binary file to write.
+            Open files are written at their current position.
         data:
             Image data to write.
         magicnumber:
@@ -395,7 +387,7 @@ class NetpbmFile:
                         msg = f'not a Netpbm file:\n{data[:16]!r}'
                         raise ValueError(msg) from exc
         except Exception:
-            self._fh.close()
+            self.close()
             raise
 
         if byteorder is not None:
@@ -416,6 +408,7 @@ class NetpbmFile:
         elif self.maxval < 2**32:
             dtype = self.byteorder + 'u4'
         else:
+            self.close()
             msg = f'{self.maxval=} out of range'
             raise ValueError(msg)
 
@@ -545,9 +538,11 @@ class NetpbmFile:
             msg = f'invalid {magicnumber=}'
             raise ValueError(msg)
 
-        if magicnumber == 'PG' and data.dtype.kind == 'i':
-            self._data = data.astype(
-                (
+        if magicnumber in {'P1', 'P4'}:
+            self._data = data.astype('bool', copy=False)
+        else:
+            if magicnumber == 'PG' and data.dtype.kind == 'i':
+                dtype = numpy.dtype(
                     'i1'
                     if maxval < 128
                     else (
@@ -555,16 +550,22 @@ class NetpbmFile:
                         if maxval < 32768
                         else self.byteorder + 'i4'
                     )
-                ),
-                copy=False,
-            )
-        elif magicnumber in {'P1', 'P4'}:
-            self._data = data.astype('bool', copy=False)
-        else:
-            self._data = data.astype(
-                'u1' if maxval < 256 else ('>u2' if maxval < 65536 else '>u4'),
-                copy=False,
-            )
+                )
+            else:
+                dtype = numpy.dtype(
+                    'u1'
+                    if maxval < 256
+                    else ('>u2' if maxval < 65536 else '>u4')
+                )
+            if data.size > 0 and not numpy.can_cast(data.dtype, dtype):
+                info = numpy.iinfo(dtype)
+                if (
+                    int(numpy.min(data)) < info.min
+                    or int(numpy.max(data)) > info.max
+                ):
+                    msg = f'data samples out of range for {maxval=}'
+                    raise ValueError(msg)
+            self._data = data.astype(dtype, copy=False)
 
         frame_size = self.height * self.width * self.depth
         self.frames = (
@@ -632,6 +633,7 @@ class NetpbmFile:
         Parameters:
             file:
                 Name of file or open binary file to write.
+                Open files are written at their current position.
             magicnumber:
                 Netpbm format to write.
                 By default, the instance's magicnumber is used.
@@ -880,7 +882,6 @@ class NetpbmFile:
             msg = f'invalid {magicnumber=!r}'
             raise ValueError(msg)
 
-        fh.seek(0)
         fh.write(
             self._header(magicnumber=magicnumber, comment=comment).encode(
                 'ascii'
@@ -955,7 +956,7 @@ class NetpbmFile:
                 .decode()
             )
         comment = f'\n# {comment[:66]}\n' if comment else ' '
-        if magicnumber.startswith('P7'):
+        if magicnumber == 'P7':
             if self.maxval < 1 or self.dtype.kind not in 'bu':
                 msg = f'data not compatible with {magicnumber!r} format'
                 raise ValueError(msg)
