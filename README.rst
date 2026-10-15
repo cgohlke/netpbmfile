@@ -24,7 +24,7 @@ No gamma correction or scaling is performed.
 
 :Author: `Christoph Gohlke <https://www.cgohlke.com>`_
 :License: BSD-3-Clause
-:Version: 2026.7.25
+:Version: 2026.10.15
 :DOI: `10.5281/zenodo.17903402 <https://doi.org/10.5281/zenodo.17903402>`_
 
 Quickstart
@@ -35,7 +35,8 @@ Install the netpbmfile package and all dependencies from the
 
     python -m pip install -U "netpbmfile[all]"
 
-See `Examples`_ for using the programming interface.
+See `Examples`_ and `Documentation <https://www.cgohlke.com/docs/netpbmfile/>`_
+for using the programming interface.
 
 Source code and support are available on
 `GitHub <https://github.com/cgohlke/netpbmfile>`_.
@@ -45,11 +46,18 @@ Requirements
 This revision was tested with the following requirements and dependencies
 (other versions may work):
 
-- `CPython <https://www.python.org>`_ 3.12.10, 3.13.14, 3.14.6, 3.15.0b4 64-bit
-- `Numpy <https://pypi.org/project/numpy>`_ 2.5.1
+- `CPython <https://www.python.org>`_ 3.12.10, 3.13.16, 3.14.8, 3.15.0 64-bit
+- `Numpy <https://pypi.org/project/numpy>`_ 2.5.4
 
 Revisions
 ---------
+
+2026.10.15
+
+- Fix silent truncation of samples not fitting dtype of maxval.
+- Write to open files at current position (breaking).
+- Do not close caller-owned file handle on parsing error.
+- Raise when writing XV format instead of writing PAM (breaking).
 
 2026.7.25
 
@@ -57,33 +65,18 @@ Revisions
 
 2026.1.29
 
-- Fix code review issues.
-
-2026.1.8
-
-- Improve code quality.
-
-2025.12.12
-
-- Drop support for Python 3.10, support Python 3.14.
-
-2025.5.8
-
-- Remove doctest command line option.
-
-2025.1.1
-
-- Improve type hints.
-- Drop support for Python 3.9, support Python 3.13.
-
-2024.5.24
-
 - …
 
 Refer to the CHANGES file for older revisions.
 
 Examples
 --------
+
+Import functions and classes used in these examples:
+
+.. code-block:: python
+
+    >>> from netpbmfile import NetpbmFile, imread, imwrite
 
 Write a numpy array to a Netpbm file in grayscale binary format:
 
