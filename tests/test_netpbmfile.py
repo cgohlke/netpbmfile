@@ -29,7 +29,7 @@
 
 """Unittests for the netpbmfile package.
 
-:Version: 2026.7.25
+:Version: 2026.10.15
 
 """
 
@@ -533,6 +533,54 @@ def test_non_netpbm():
 
     with pytest.raises(ValueError):
         imread(io.BytesIO(b'P7      '))
+
+
+def test_maxval_out_of_range():
+    """Test samples not fitting dtype of explicit maxval are rejected."""
+    with pytest.raises(ValueError):
+        imwrite(io.BytesIO(), numpy.array([[300]], 'u2'), maxval=255)
+    with pytest.raises(ValueError):
+        imwrite(
+            io.BytesIO(),
+            numpy.array([[-300, 0]], 'i2'),
+            magicnumber='PG',
+            maxval=100,
+        )
+    temp = io.BytesIO()
+    imwrite(temp, numpy.array([[-128, 127]], 'i2'), maxval=127)
+    assert_array_equal(imread(temp), [[-128, 127]])
+
+
+def test_write_current_position():
+    """Test writing to open file starts at current position."""
+    temp = io.BytesIO()
+    temp.write(b'prefix')
+    imwrite(temp, numpy.array([[1, 2], [3, 4]], 'u1'))
+    assert temp.getvalue().startswith(b'prefixP5')
+
+
+def test_parse_error_keeps_stream_open():
+    """Test malformed header does not close caller-owned stream."""
+    temp = io.BytesIO(b'P5 invalid header')
+    with pytest.raises(ValueError):
+        NetpbmFile(temp)
+    assert not temp.closed
+
+
+def test_write_xv_not_supported():
+    """Test writing XV format raises."""
+    filepath = os.path.join(TEST_DIR, 'P7_332.pam')
+    if not os.path.exists(filepath):
+        pytest.skip('P7_332.pam not found')
+    with NetpbmFile(filepath) as fh:
+        assert fh.magicnumber == 'P7 332'
+        with pytest.raises(ValueError):
+            fh.write(io.BytesIO())
+        with pytest.raises(ValueError):
+            fh.write(io.BytesIO(), magicnumber='P7 332')
+        temp = io.BytesIO()
+        fh.write(temp, magicnumber='P7')
+        assert_array_equal(imread(temp), fh.asarray())
 
 
 @pytest.mark.parametrize(
