@@ -1,6 +1,13 @@
 Revisions
 ---------
 
+2026.10.15
+
+- Fix silent truncation of samples not fitting dtype of maxval.
+- Write to open files at current position (breaking).
+- Do not close caller-owned file handle on parsing error.
+- Raise when writing XV format instead of writing PAM (breaking).
+
 2026.7.25
 
 - Drop support for Python 3.11 and numpy 2.0 (SPEC0), support Python 3.15.
